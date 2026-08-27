@@ -1,13 +1,18 @@
+@import url('https://cdn.jsdelivr.net/gh/fonts-archive/NanumBarunGothic/subsets/NanumBarunGothic-dynamic-subset.css');
+
 :root {
   color-scheme: dark;
+
   --bg: #061019;
   --bg-soft: #0a1722;
   --panel: rgba(12, 28, 39, 0.86);
   --panel-strong: rgba(15, 36, 49, 0.96);
   --line: rgba(136, 195, 209, 0.15);
   --line-strong: rgba(112, 223, 226, 0.34);
+
   --text: #eef8f8;
   --muted: #91a9b2;
+
   --cyan: #59e0dc;
   --blue: #3aa9ff;
   --green: #50e38f;
@@ -15,22 +20,68 @@
   --orange: #ff9d57;
   --red: #ff5d70;
   --critical: #ff355e;
+
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
   --radius: 20px;
-  font-family: Inter, Pretendard, "Noto Sans KR", "Segoe UI", sans-serif;
+
+  --font-ui:
+    "Nanum Barun Gothic",
+    "NanumBarunGothic",
+    "HCR Dotum",
+    "함초롬돋움",
+    "SeoulNamsan",
+    "서울남산체",
+    "Malgun Gothic",
+    sans-serif;
+
+  font-family: var(--font-ui);
 }
 
-* { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
 body {
   min-width: 1180px;
   background:
-    radial-gradient(circle at 78% 8%, rgba(45, 190, 190, 0.13), transparent 28%),
-    radial-gradient(circle at 44% 100%, rgba(35, 105, 180, 0.10), transparent 35%),
-    linear-gradient(135deg, #050c12 0%, #07131d 42%, #061018 100%);
+    radial-gradient(
+      circle at 78% 8%,
+      rgba(45, 190, 190, 0.13),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 44% 100%,
+      rgba(35, 105, 180, 0.10),
+      transparent 35%
+    ),
+    linear-gradient(
+      135deg,
+      #050c12 0%,
+      #07131d 42%,
+      #061018 100%
+    );
 }
-button, input, select { font: inherit; }
-button { cursor: pointer; }
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
 
 .app-shell { display: grid; grid-template-columns: 272px 1fr; min-height: 100vh; }
 .sidebar {
