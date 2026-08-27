@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "posco-futurem-smart-safety-guardian-free",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-08-27",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*",
+      "/media/*"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB"
+    }
+  ],
+  "vars": {
+    "APP_NAME": "스마트 안전지킴이",
+    "COMPANY_NAME": "POSCO Future M",
+    "DEMO_MODE": "false",
+    "BROWSER_EDITION": "true",
+    "MEDIA_STORAGE": "d1"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

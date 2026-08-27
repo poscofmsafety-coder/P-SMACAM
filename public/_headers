@@ -1,0 +1,9 @@
+/*
+  Permissions-Policy: camera=(self)
+  Cache-Control: no-cache
+
+/api/*
+  Cache-Control: no-store
+
+/media/*
+  Cache-Control: no-store

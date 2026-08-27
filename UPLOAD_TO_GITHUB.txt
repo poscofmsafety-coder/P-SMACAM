@@ -1,0 +1,10 @@
+압축을 푼 뒤 이 폴더 안의 파일과 폴더 전체를 GitHub 저장소 루트에 덮어쓰고 Commit/Push 하세요.
+
+Cloudflare:
+- Workers 사용
+- Build command: 없음
+- Deploy command: npx wrangler deploy
+- Root directory: /
+
+배포 후 각 노트북에서 사이트를 열고 상단의 지킴이 ON을 누른 뒤 카메라 권한을 허용합니다.
+관리자는 같은 사이트의 통합 대시보드 또는 실시간 관제 메뉴에서 프리뷰를 확인합니다.

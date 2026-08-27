@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#071018" />
+    <title>스마트 안전지킴이 | POSCO Future M</title>
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <div>
+            <strong>POSCO FUTURE M</strong>
+            <small>AI Edge Safety Platform</small>
+          </div>
+        </div>
+
+        <div class="product-title">
+          <span class="pulse-dot"></span>
+          스마트 안전지킴이
+        </div>
+
+        <nav class="nav-list" aria-label="주 메뉴">
+          <button class="nav-item active" data-page="overview"><span>⌂</span>통합 대시보드</button>
+          <button class="nav-item guard-nav" data-page="guard"><span>◉</span>현장 지킴이</button>
+          <button class="nav-item" data-page="live"><span>▣</span>실시간 관제</button>
+          <button class="nav-item" data-page="devices"><span>▤</span>장치 관리</button>
+          <button class="nav-item" data-page="zones"><span>⌖</span>위험구역 설정</button>
+          <button class="nav-item" data-page="ppe"><span>◉</span>근로자 보호구</button>
+          <button class="nav-item" data-page="behavior"><span>⚠</span>불안전 행동</button>
+          <button class="nav-item" data-page="environment"><span>◇</span>작업환경</button>
+          <button class="nav-item" data-page="equipment"><span>▰</span>중장비</button>
+          <button class="nav-item" data-page="events"><span>≡</span>이벤트 센터</button>
+          <button class="nav-item" data-page="reports"><span>↗</span>리포트</button>
+          <button class="nav-item" data-page="settings"><span>⚙</span>설정</button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="edge-status">
+            <span class="status-orb"></span>
+            <div><b>Cloud Edge</b><small>연결 상태 정상</small></div>
+          </div>
+          <small>Browser Edition v1.1</small>
+        </div>
+      </aside>
+
+      <main class="main-area">
+        <header class="topbar">
+          <button class="mobile-menu" id="mobileMenu" aria-label="메뉴">☰</button>
+          <div>
+            <p class="eyebrow">POSCO Future M · Smart Factory Safety</p>
+            <h1 id="pageTitle">통합 대시보드</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="guardian-toggle" id="guardianToggle" type="button"><span class="guardian-toggle-dot"></span><b>지킴이 ON</b></button>
+            <div class="system-chip"><span class="pulse-dot"></span>AI 관제 운영 중</div>
+            <div class="clock" id="clock"></div>
+            <button class="icon-button" id="voiceTest" title="음성 알림 테스트">◖</button>
+          </div>
+        </header>
+
+        <section class="page active" id="page-overview">
+          <div class="hero-panel">
+            <div>
+              <p class="eyebrow">BATTERY MATERIALS · SAFETY INTELLIGENCE</p>
+              <h2>현장의 위험 신호를<br /><em>사고 전에</em> 발견합니다.</h2>
+              <p>노트북 카메라를 AI 안전 CCTV로 전환하고 모든 현장을 하나의 대시보드에서 관제합니다.</p>
+              <div class="hero-actions"><button class="primary-button" id="guardHeroStartButton" type="button">프로그램 설치 없이 지킴이 ON</button><button class="secondary-button" data-goto="live">관제센터 보기</button></div>
+            </div>
+            <div class="battery-visual" aria-hidden="true">
+              <div class="battery-cell cell-a"></div>
+              <div class="battery-cell cell-b"></div>
+              <div class="battery-cell cell-c"></div>
+              <div class="energy-line line-a"></div>
+              <div class="energy-line line-b"></div>
+              <div class="core-ring"><span>AI</span></div>
+            </div>
+          </div>
+
+          <div class="kpi-grid" id="kpiGrid"></div>
+
+          <div class="dashboard-grid">
+            <article class="panel panel-large">
+              <div class="panel-header">
+                <div><p class="eyebrow">LIVE EDGE NETWORK</p><h3>실시간 관제 장치</h3></div>
+                <button class="text-button" data-goto="live">전체 보기 →</button>
+              </div>
+              <div class="device-grid compact" id="overviewDevices"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div><p class="eyebrow">AI SAFETY COPILOT</p><h3>AI 관제 브리핑</h3></div>
+                <span class="ai-badge">AI</span>
+              </div>
+              <div class="ai-briefing" id="aiBriefing"></div>
+            </article>
+
+            <article class="panel panel-large">
+              <div class="panel-header">
+                <div><p class="eyebrow">REAL-TIME EVENTS</p><h3>최근 위험 이벤트</h3></div>
+                <button class="text-button" data-goto="events">이벤트 센터 →</button>
+              </div>
+              <div class="event-list" id="overviewEvents"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div><p class="eyebrow">TODAY BY CATEGORY</p><h3>위험 유형 분포</h3></div>
+              </div>
+              <div class="category-chart" id="categoryChart"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="page" id="page-guard">
+          <div class="section-toolbar guard-toolbar">
+            <div>
+              <p class="eyebrow">ZERO-INSTALL BROWSER EDGE</p>
+              <h2>현장 스마트 안전지킴이</h2>
+              <p class="section-lead">프로그램 설치 없이 브라우저에서 카메라를 켜고 중앙 관제에 연결합니다.</p>
+            </div>
+            <div class="toolbar-actions">
+              <span class="guard-status-pill" id="guardStatusPill"><i></i><b>대기 중</b></span>
+              <button class="primary-button guard-start-button" id="guardStartButton">지킴이 ON</button>
+            </div>
+          </div>
+
+          <div class="guard-layout">
+            <section class="panel guard-camera-panel">
+              <div class="guard-camera-stage" id="guardCameraStage">
+                <video id="guardVideo" autoplay muted playsinline></video>
+                <canvas id="guardOverlay"></canvas>
+                <div class="guard-camera-placeholder" id="guardCameraPlaceholder">
+                  <div class="camera-power-icon">◉</div>
+                  <h3>지킴이 ON을 눌러 카메라를 시작하세요</h3>
+                  <p>첫 실행 시 브라우저의 카메라 권한에서 <b>허용</b>을 선택합니다.</p>
+                </div>
+                <div class="guard-live-badge" id="guardLiveBadge">● EDGE LIVE</div>
+                <div class="guard-warning-banner" id="guardWarningBanner"></div>
+              </div>
+
+              <div class="guard-metrics">
+                <div><span>장치 상태</span><b id="guardConnectionMetric">OFFLINE</b></div>
+                <div><span>AI 모델</span><b id="guardModelMetric">대기</b></div>
+                <div><span>감지 인원</span><b id="guardPeopleMetric">0명</b></div>
+                <div><span>분석 속도</span><b id="guardFpsMetric">0.0 FPS</b></div>
+                <div><span>중앙 프리뷰</span><b id="guardPreviewMetric">대기</b></div>
+              </div>
+            </section>
+
+            <aside class="guard-side-stack">
+              <section class="panel guard-settings-panel">
+                <div class="panel-header">
+                  <div><p class="eyebrow">DEVICE PROFILE</p><h3>장치 정보</h3></div>
+                  <span class="browser-edge-badge">WEB EDGE</span>
+                </div>
+                <div class="guard-form-grid">
+                  <label>장치 이름<input id="guardDeviceName" placeholder="예: 노트북 1" /></label>
+                  <label>사업장<input id="guardSite" placeholder="예: 포항 양극재 1공장" /></label>
+                  <label>설치 구역<input id="guardArea" placeholder="예: 원료 투입구역" /></label>
+                  <label>카메라<select id="guardCameraSelect"><option value="">기본 카메라</option></select></label>
+                </div>
+                <div class="guard-option-row">
+                  <label class="switch-row compact"><span><b>한국어 음성 경고</b><small>위험 감지 시 현장 노트북에서 안내</small></span><input type="checkbox" id="guardVoiceEnabled" checked /></label>
+                  <label class="switch-row compact"><span><b>위험구역 감지</b><small>관리자 설정 구역을 자동 적용</small></span><input type="checkbox" id="guardZoneEnabled" checked /></label>
+                </div>
+                <button class="secondary-button full-button" id="guardSaveProfile">장치 정보 저장</button>
+                <p class="device-id-note">장치 ID <code id="guardDeviceId"></code></p>
+              </section>
+
+              <section class="panel guard-quick-panel">
+                <div class="panel-header"><div><p class="eyebrow">VOICE & EVENT TEST</p><h3>빠른 기능 시험</h3></div></div>
+                <div class="quick-test-grid">
+                  <button data-guard-test="helmet"><span>◉</span><b>안전모</b><small>착용 안내</small></button>
+                  <button data-guard-test="forklift"><span>▰</span><b>지게차</b><small>접근 주의</small></button>
+                  <button data-guard-test="zone"><span>⌖</span><b>위험구역</b><small>이동 안내</small></button>
+                  <button data-guard-test="fall"><span>↘</span><b>넘어짐</b><small>확인 요청</small></button>
+                </div>
+              </section>
+
+              <section class="panel browser-notice">
+                <b>웹 지킴이 운영 조건</b>
+                <p>카메라는 사용자 동의 후 켜집니다. 이 브라우저 탭을 열어 둔 동안 카메라 분석과 중앙 프리뷰 전송이 유지됩니다.</p>
+              </section>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page" id="page-live">
+          <div class="section-toolbar">
+            <div><p class="eyebrow">MULTI CAMERA CONTROL</p><h2>실시간 통합관제</h2></div>
+            <div class="toolbar-actions">
+              <button class="secondary-button" id="refreshLive">새로고침</button>
+              <button class="primary-button" id="simulateEvent">위험 이벤트 시연</button>
+            </div>
+          </div>
+          <div class="device-grid live-grid" id="liveDevices"></div>
+        </section>
+
+        <section class="page" id="page-devices">
+          <div class="section-toolbar">
+            <div><p class="eyebrow">EDGE DEVICE MANAGEMENT</p><h2>장치 관리</h2></div>
+            <div class="toolbar-actions"><button class="secondary-button" id="cleanupOfflineDevices">오프라인 정리</button><button class="primary-button" id="copyGuardLink">현장 지킴이 링크 복사</button></div>
+          </div>
+          <div class="panel table-panel">
+            <table class="data-table">
+              <thead><tr><th>장치</th><th>사업장/구역</th><th>상태</th><th>작업자</th><th>FPS</th><th>CPU</th><th>메모리</th><th>최근 연결</th></tr></thead>
+              <tbody id="deviceTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page" id="page-zones">
+          <div class="section-toolbar">
+            <div><p class="eyebrow">REMOTE ZONE EDITOR</p><h2>위험구역 설정 모드</h2></div>
+            <div class="toolbar-actions"><button class="secondary-button" id="clearZone">구역 초기화</button><button class="primary-button" id="saveZone">설정 저장</button></div>
+          </div>
+          <div class="config-layout">
+            <aside class="panel config-sidebar">
+              <label>대상 장치<select id="zoneDeviceSelect"></select></label>
+              <label>구역 이름<input id="zoneName" value="출입 제한 구역" /></label>
+              <label>위험 등급<select id="zoneSeverity"><option value="medium">주의</option><option value="high" selected>위험</option><option value="critical">긴급</option></select></label>
+              <div class="instruction-card"><b>사용 방법</b><ol><li>카메라 화면을 클릭해 꼭짓점을 지정합니다.</li><li>3개 이상 지정하면 다각형 위험구역이 생성됩니다.</li><li>저장하면 해당 브라우저 지킴이에 자동 반영됩니다.</li></ol></div>
+            </aside>
+            <div class="panel zone-canvas-panel">
+              <canvas id="zoneCanvas" width="1280" height="720"></canvas>
+              <div class="zone-legend"><span><i class="legend-dot red"></i>위험구역</span><span><i class="legend-dot cyan"></i>작업자 감지 기준점</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="page-ppe">
+          <div class="section-toolbar"><div><p class="eyebrow">PERSONAL PROTECTIVE EQUIPMENT</p><h2>근로자 보호구 감지</h2></div><button class="primary-button rule-save">규칙 저장</button></div>
+          <div class="config-layout"><aside class="panel config-sidebar"><label>대상 장치<select class="rule-device-select"></select></label><div class="voice-card"><span>음성 경고 예시</span><b>“안전모를 착용해주세요.”</b><button class="secondary-button speak-sample" data-text="안전모를 착용해주세요.">음성 듣기</button></div></aside><div class="feature-grid" data-rule-group="ppe"></div></div>
+        </section>
+
+        <section class="page" id="page-behavior">
+          <div class="section-toolbar"><div><p class="eyebrow">UNSAFE BEHAVIOR ANALYTICS</p><h2>불안전 행동 감지</h2></div><button class="primary-button rule-save">규칙 저장</button></div>
+          <div class="config-layout"><aside class="panel config-sidebar"><label>대상 장치<select class="rule-device-select"></select></label><div class="voice-card"><span>음성 경고 예시</span><b>“위험구역입니다. 즉시 이동해주세요.”</b><button class="secondary-button speak-sample" data-text="위험구역입니다. 즉시 이동해주세요.">음성 듣기</button></div></aside><div class="feature-grid" data-rule-group="behavior"></div></div>
+        </section>
+
+        <section class="page" id="page-environment">
+          <div class="section-toolbar"><div><p class="eyebrow">WORKPLACE CONDITION</p><h2>작업환경 불안전 상태</h2></div><button class="primary-button rule-save">규칙 저장</button></div>
+          <div class="config-layout"><aside class="panel config-sidebar"><label>대상 장치<select class="rule-device-select"></select></label><div class="voice-card"><span>AI 판정 원칙</span><b>“불량 확정”이 아닌 “관리자 확인 필요”로 안내</b></div></aside><div class="feature-grid" data-rule-group="environment"></div></div>
+        </section>
+
+        <section class="page" id="page-equipment">
+          <div class="section-toolbar"><div><p class="eyebrow">MOBILE EQUIPMENT SAFETY</p><h2>중장비 위험사항</h2></div><button class="primary-button rule-save">규칙 저장</button></div>
+          <div class="config-layout"><aside class="panel config-sidebar"><label>대상 장치<select class="rule-device-select"></select></label><div class="voice-card"><span>음성 경고 예시</span><b>“지게차가 지나갑니다. 주의하세요.”</b><button class="secondary-button speak-sample" data-text="지게차가 지나갑니다. 주의하세요.">음성 듣기</button></div></aside><div class="feature-grid" data-rule-group="equipment"></div></div>
+        </section>
+
+        <section class="page" id="page-events">
+          <div class="section-toolbar"><div><p class="eyebrow">SAFETY EVENT CENTER</p><h2>이벤트 센터</h2></div><button class="secondary-button" id="exportEvents">CSV 내보내기</button></div>
+          <div class="filter-bar panel"><select id="eventDeviceFilter"><option value="">전체 장치</option></select><select id="eventCategoryFilter"><option value="">전체 유형</option><option>위험구역</option><option>보호구</option><option>불안전 행동</option><option>작업환경</option><option>중장비</option></select><select id="eventSeverityFilter"><option value="">전체 등급</option><option value="critical">긴급</option><option value="high">위험</option><option value="medium">주의</option></select><button class="primary-button" id="applyEventFilter">조회</button></div>
+          <div class="panel table-panel"><table class="data-table"><thead><tr><th>발생시간</th><th>장치</th><th>유형</th><th>등급</th><th>내용</th><th>상태</th><th>조치</th></tr></thead><tbody id="eventTableBody"></tbody></table></div>
+        </section>
+
+        <section class="page" id="page-reports">
+          <div class="section-toolbar"><div><p class="eyebrow">SAFETY INTELLIGENCE REPORT</p><h2>리포트</h2></div><button class="primary-button" id="printReport">리포트 인쇄</button></div>
+          <div class="report-grid"><div class="panel"><div class="panel-header"><h3>최근 7일 이벤트 추이</h3></div><div class="trend-chart" id="trendChart"></div></div><div class="panel"><div class="panel-header"><h3>AI 개선 권고</h3></div><div class="recommendation-list" id="recommendations"></div></div></div>
+        </section>
+
+        <section class="page" id="page-settings">
+          <div class="section-toolbar"><div><p class="eyebrow">SYSTEM CONFIGURATION</p><h2>설정</h2></div></div>
+          <div class="settings-grid">
+            <div class="panel settings-card"><h3>한국어 음성 알림</h3><label class="switch-row"><span><b>현장 음성 경고</b><small>브라우저 지킴이에서 위험 발생 시 한국어 경고</small></span><input type="checkbox" checked disabled /></label><div class="button-stack"><button class="secondary-button speak-sample" data-text="안전모를 착용해주세요.">안전모 경고 듣기</button><button class="secondary-button speak-sample" data-text="지게차가 지나갑니다. 주의하세요.">지게차 경고 듣기</button><button class="secondary-button speak-sample" data-text="위험구역입니다. 즉시 이동해주세요.">위험구역 경고 듣기</button></div></div>
+            <div class="panel settings-card"><h3>Cloudflare 연결</h3><div class="connection-details"><span>배포 유형</span><b>Cloudflare Workers</b><span>데이터베이스</span><b>D1</b><span>이미지 저장</span><b>D1 저용량 프리뷰</b><span>현재 API</span><code id="apiOrigin"></code></div></div>
+            <div class="panel settings-card"><h3>브라우저 지킴이</h3><p>각 노트북에서 별도 설치 없이 현장 지킴이 링크를 열고 ON을 누르면 중앙 관제에 등록됩니다.</p><div class="button-stack"><button class="primary-button" data-start-guard>이 노트북에서 지킴이 시작</button><button class="secondary-button" id="copyGuardLinkSettings">현장용 링크 복사</button></div></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

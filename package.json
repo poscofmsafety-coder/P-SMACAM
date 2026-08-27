@@ -1,0 +1,16 @@
+{
+  "name": "posco-futurem-smart-safety-guardian",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "POSCO Future M 스마트 안전지킴이 - 설치 없는 브라우저 카메라 + Cloudflare 중앙 관제",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "check": "node --check src/worker.js && node --check public/app.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.68.0"
+  }
+}
