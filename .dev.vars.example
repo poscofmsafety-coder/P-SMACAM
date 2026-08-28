@@ -1,0 +1,4 @@
+ADMIN_PIN=2468
+USER_PIN=1357
+SESSION_SECRET=replace-with-a-long-random-secret
+TURN_ICE_SERVERS=[]
