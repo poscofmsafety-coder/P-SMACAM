@@ -1,10 +1,14 @@
-압축을 푼 뒤 이 폴더 안의 파일과 폴더 전체를 GitHub 저장소 루트에 덮어쓰고 Commit/Push 하세요.
+1. ZIP 압축을 풉니다.
+2. 이 폴더 안의 파일 전체를 기존 GitHub 저장소 루트에 덮어씁니다.
+3. Commit & Push 합니다.
+4. Cloudflare 자동 배포 로그에서 D1과 SignalingRoom Durable Object 생성 성공을 확인합니다.
+5. 배포 후 Ctrl+F5로 새로고침합니다.
 
-Cloudflare:
-- Workers 사용
-- Build command: 없음
-- Deploy command: npx wrangler deploy
-- Root directory: /
+기본 로그인
+- 관리자: 2468
+- 사용자: 1357
 
-배포 후 각 노트북에서 사이트를 열고 상단의 지킴이 ON을 누른 뒤 카메라 권한을 허용합니다.
-관리자는 같은 사이트의 통합 대시보드 또는 실시간 관제 메뉴에서 프리뷰를 확인합니다.
+배포 후 Cloudflare Variables/Secrets에서 반드시 변경
+- ADMIN_PIN
+- USER_PIN
+- SESSION_SECRET
