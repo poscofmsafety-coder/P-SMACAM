@@ -50,7 +50,7 @@ const ruleGroups = {
 };
 
 const defaultConfig = () => ({
-  version: 4,
+  version: 5,
   zones: [],
   rules: {
     dangerZone: false,
@@ -72,7 +72,7 @@ const defaultConfig = () => ({
     fire: false,
   },
   voice: { enabled: true, cooldownSeconds: 12, volume: 0.95 },
-  detection: { confidence: 0.28, consecutiveFrames: 3, intervalMs: 1000, inferMissingPpeFromPerson: true, minPersonHeightRatio: 0.20 },
+  detection: { confidence: 0.28, consecutiveFrames: 3, intervalMs: 1000, inferMissingPpeFromPerson: true, fallbackPpeFromAnyAnchor: true, minPersonHeightRatio: 0.16, fallbackNegativeScore: 0.54 },
 });
 
 const state = {
@@ -1449,7 +1449,7 @@ async function registerGuard() {
     area: $("#guardArea").value.trim() || "미지정 구역",
   };
   localStorage.setItem("ssg-guard-profile", JSON.stringify({ ...profile, cameraId: $("#guardCameraSelect").value, voiceEnabled: $("#guardVoiceEnabled").checked, zoneEnabled: $("#guardZoneEnabled").checked }));
-  await api("/api/agents/register", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), ...profile, cameraLabel: $("#guardCameraSelect").selectedOptions[0]?.textContent || "브라우저 카메라", agentVersion: "browser-webrtc-4.0", config: guard.config }) });
+  await api("/api/agents/register", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), ...profile, cameraLabel: $("#guardCameraSelect").selectedOptions[0]?.textContent || "브라우저 카메라", agentVersion: "browser-webrtc-4.1-ppe-fix", config: guard.config }) });
 }
 
 async function fetchGuardConfig() {
@@ -1476,7 +1476,7 @@ function stopGuardTimers() {
 async function sendGuardHeartbeat() {
   if (!guard.active) return;
   try {
-    await api("/api/agents/heartbeat", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), fps: guard.inferenceFps, cpu: 0, memory: 0, peopleCount: guard.peopleCount, currentRisk: guard.currentRisk, agentVersion: "browser-webrtc-4.0" }) });
+    await api("/api/agents/heartbeat", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), fps: guard.inferenceFps, cpu: 0, memory: 0, peopleCount: guard.peopleCount, currentRisk: guard.currentRisk, agentVersion: "browser-webrtc-4.1-ppe-fix" }) });
   } catch { /* reconnect will retry */ }
 }
 
@@ -1571,6 +1571,11 @@ function centerInRect(item, rect) {
 }
 
 function ppeRegionForPerson(person, type) {
+  if (person.closeUp) {
+    if (type === "helmet") return { x: person.x + person.width * 0.04, y: Math.max(0, person.y - person.height * 0.02), width: person.width * 0.92, height: person.height * 0.30 };
+    if (type === "goggles") return { x: person.x + person.width * 0.12, y: person.y + person.height * 0.34, width: person.width * 0.76, height: person.height * 0.17 };
+    return { x: person.x + person.width * 0.18, y: person.y + person.height * 0.48, width: person.width * 0.64, height: person.height * 0.23 };
+  }
   const expandX = person.width * 0.08;
   const x = Math.max(0, person.x - expandX);
   const width = person.width + expandX * 2;
@@ -1579,28 +1584,149 @@ function ppeRegionForPerson(person, type) {
   return { x: person.x + person.width * 0.12, y: person.y + person.height * 0.20, width: person.width * 0.76, height: person.height * 0.25 };
 }
 
-function deriveMissingPpeDetections(detections, sourceHeight) {
+function rectIou(a, b) {
+  const ax2 = a.x + a.width;
+  const ay2 = a.y + a.height;
+  const bx2 = b.x + b.width;
+  const by2 = b.y + b.height;
+  const x1 = Math.max(a.x, b.x);
+  const y1 = Math.max(a.y, b.y);
+  const x2 = Math.min(ax2, bx2);
+  const y2 = Math.min(ay2, by2);
+  const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+  const areaA = Math.max(1, a.width * a.height);
+  const areaB = Math.max(1, b.width * b.height);
+  return intersection / Math.max(1, areaA + areaB - intersection);
+}
+
+function rectContainsCenter(outer, inner) {
+  const cx = inner.x + inner.width / 2;
+  const cy = inner.y + inner.height / 2;
+  return cx >= outer.x && cx <= outer.x + outer.width && cy >= outer.y && cy <= outer.y + outer.height;
+}
+
+function clampSubject(rect, sourceWidth, sourceHeight) {
+  const x = Math.max(0, Math.min(sourceWidth - 1, rect.x));
+  const y = Math.max(0, Math.min(sourceHeight - 1, rect.y));
+  const width = Math.max(4, Math.min(sourceWidth - x, rect.width));
+  const height = Math.max(4, Math.min(sourceHeight - y, rect.height));
+  return { ...rect, x, y, width, height };
+}
+
+function proxyDetectionToSubject(item, sourceWidth, sourceHeight) {
+  const ratio = item.height / Math.max(1, item.width);
+  const largeBodyLike = item.height / Math.max(1, sourceHeight) >= 0.24 && ratio >= 1.05;
+
+  if (item.label === "Person" || largeBodyLike) {
+    const closeUp = item.width / Math.max(1, sourceWidth) >= 0.28
+      && item.height / Math.max(1, sourceHeight) >= 0.45
+      && ratio < 1.85;
+    return clampSubject({
+      x: item.x,
+      y: item.y,
+      width: item.width,
+      height: item.height,
+      score: item.score,
+      closeUp,
+      anchorLabel: item.label,
+      anchorPriority: item.label === "Person" ? 4 : 3,
+    }, sourceWidth, sourceHeight);
+  }
+
+  if (["Hardhat", "NO-Hardhat"].includes(item.label)) {
+    return clampSubject({
+      x: item.x - item.width * 0.45,
+      y: item.y - item.height * 0.10,
+      width: item.width * 1.90,
+      height: Math.max(item.height * 4.4, item.width * 3.1),
+      score: item.score,
+      anchorLabel: item.label,
+      anchorPriority: 2,
+    }, sourceWidth, sourceHeight);
+  }
+
+  if (["Goggles", "NO-Goggles"].includes(item.label)) {
+    return clampSubject({
+      x: item.x - item.width * 0.48,
+      y: item.y - item.height * 1.25,
+      width: item.width * 1.96,
+      height: Math.max(item.height * 5.2, item.width * 2.8),
+      score: item.score,
+      anchorLabel: item.label,
+      anchorPriority: 1,
+    }, sourceWidth, sourceHeight);
+  }
+
+  if (["Mask", "NO-Mask"].includes(item.label)) {
+    return clampSubject({
+      x: item.x - item.width * 0.42,
+      y: item.y - item.height * 2.10,
+      width: item.width * 1.84,
+      height: Math.max(item.height * 6.0, item.width * 3.2),
+      score: item.score,
+      anchorLabel: item.label,
+      anchorPriority: 1,
+    }, sourceWidth, sourceHeight);
+  }
+
+  return null;
+}
+
+function collectPpeSubjects(detections, sourceWidth, sourceHeight) {
+  const minRatio = guard.config.detection?.minPersonHeightRatio ?? 0.16;
+  const fallbackEnabled = guard.config.detection?.fallbackPpeFromAnyAnchor !== false;
+  const anchorLabels = fallbackEnabled
+    ? new Set(["Person", "Hardhat", "NO-Hardhat", "Goggles", "NO-Goggles", "Mask", "NO-Mask"])
+    : new Set(["Person"]);
+
+  const candidates = detections
+    .filter((item) => anchorLabels.has(item.label))
+    .map((item) => proxyDetectionToSubject(item, sourceWidth, sourceHeight))
+    .filter(Boolean)
+    .filter((item) => item.height / Math.max(1, sourceHeight) >= minRatio || item.anchorLabel !== "Person")
+    .sort((a, b) => (b.anchorPriority - a.anchorPriority) || (b.width * b.height - a.width * a.height));
+
+  const subjects = [];
+  for (const candidate of candidates) {
+    const duplicate = subjects.some((existing) => {
+      if (rectIou(existing, candidate) >= 0.32) return true;
+      if (rectContainsCenter(existing, candidate) || rectContainsCenter(candidate, existing)) {
+        const existingArea = existing.width * existing.height;
+        const candidateArea = candidate.width * candidate.height;
+        const ratio = Math.min(existingArea, candidateArea) / Math.max(existingArea, candidateArea);
+        return ratio >= 0.20;
+      }
+      return false;
+    });
+    if (!duplicate) subjects.push(candidate);
+  }
+  return subjects;
+}
+
+function deriveMissingPpeDetections(detections, sourceWidth, sourceHeight) {
   const result = [...detections];
-  const people = detections.filter((item) => item.label === "Person");
+  if (guard.config.detection?.inferMissingPpeFromPerson === false) {
+    return { detections: result, subjects: detections.filter((item) => item.label === "Person") };
+  }
+
+  const subjects = collectPpeSubjects(detections, sourceWidth, sourceHeight);
   const definitions = [
     { type: "helmet", positive: "Hardhat", negative: "NO-Hardhat" },
     { type: "goggles", positive: "Goggles", negative: "NO-Goggles" },
     { type: "mask", positive: "Mask", negative: "NO-Mask" },
   ];
-  const minRatio = guard.config.detection?.minPersonHeightRatio ?? 0.20;
-  if (guard.config.detection?.inferMissingPpeFromPerson === false) return result;
-  for (const person of people) {
-    if (!sourceHeight || person.height / sourceHeight < minRatio || person.score < 0.40) continue;
+  const syntheticScore = guard.config.detection?.fallbackNegativeScore ?? 0.54;
+
+  for (const subject of subjects) {
     for (const definition of definitions) {
-      const region = ppeRegionForPerson(person, definition.type);
-      const personRect = { x: person.x, y: person.y, width: person.width, height: person.height };
-      const directNegative = detections.some((item) => item.label === definition.negative && centerInRect(item, personRect));
+      const region = ppeRegionForPerson(subject, definition.type);
+      const directNegative = detections.some((item) => item.label === definition.negative && centerInRect(item, subject));
       const positive = detections.some((item) => item.label === definition.positive && centerInRect(item, region));
       if (!directNegative && !positive) {
         result.push({
           classId: -1,
           label: definition.negative,
-          score: Math.max(0.51, person.score * 0.72),
+          score: Math.max(syntheticScore, Math.min(0.78, (subject.score || 0.55) * 0.82)),
           x: region.x,
           y: region.y,
           width: region.width,
@@ -1610,18 +1736,20 @@ function deriveMissingPpeDetections(detections, sourceHeight) {
           x2: region.x + region.width,
           y2: region.y + region.height,
           synthetic: true,
+          anchorLabel: subject.anchorLabel,
         });
       }
     }
   }
-  return result;
+  return { detections: result, subjects };
 }
 
 function processGuardDetections(message) {
   resizeGuardOverlay();
   const rawDetections = message.detections || [];
-  const detections = deriveMissingPpeDetections(rawDetections, message.sourceHeight);
-  guard.peopleCount = rawDetections.filter((item) => item.label === "Person").length;
+  const derived = deriveMissingPpeDetections(rawDetections, message.sourceWidth, message.sourceHeight);
+  const detections = derived.detections;
+  guard.peopleCount = Math.max(rawDetections.filter((item) => item.label === "Person").length, derived.subjects.length);
   const violations = [];
   const rules = guard.config.rules || {};
   const noHelmet = detections.filter((item) => item.label === "NO-Hardhat");

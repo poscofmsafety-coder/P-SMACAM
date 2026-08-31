@@ -168,8 +168,8 @@ function nms(candidates, threshold = 0.45, maxDetections = 80) {
 function confidenceThreshold(classId, base) {
   // Small face PPE objects need lower class-specific thresholds than people or vests.
   // Repeated-frame confirmation in app.js is the final safeguard against one-frame noise.
-  const floors = { 0: 0.18, 2: 0.15, 3: 0.17, 4: 0.15, 6: 0.12, 7: 0.16, 8: 0.12, 10: 0.18, 11: 0.22 };
-  const reductions = { 0: 0.10, 2: 0.10, 3: 0.08, 4: 0.10, 6: 0.16, 7: 0.12, 8: 0.16, 10: 0.10, 11: 0.04 };
+  const floors = { 0: 0.18, 2: 0.14, 3: 0.17, 4: 0.14, 6: 0.10, 7: 0.15, 8: 0.10, 10: 0.18, 11: 0.15 };
+  const reductions = { 0: 0.10, 2: 0.12, 3: 0.08, 4: 0.12, 6: 0.18, 7: 0.13, 8: 0.18, 10: 0.10, 11: 0.14 };
   return Math.max(floors[classId] ?? base, base - (reductions[classId] ?? 0));
 }
 

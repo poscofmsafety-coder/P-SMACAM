@@ -135,7 +135,7 @@ async function readJson(request) {
 
 function defaultConfig() {
   return {
-    version: 4,
+    version: 5,
     zones: [],
     rules: {
       dangerZone: false,
@@ -157,7 +157,7 @@ function defaultConfig() {
       fire: false,
     },
     voice: { enabled: true, cooldownSeconds: 12, volume: 0.95 },
-    detection: { confidence: 0.28, consecutiveFrames: 3, intervalMs: 1000, inferMissingPpeFromPerson: true, minPersonHeightRatio: 0.20 },
+    detection: { confidence: 0.28, consecutiveFrames: 3, intervalMs: 1000, inferMissingPpeFromPerson: true, fallbackPpeFromAnyAnchor: true, minPersonHeightRatio: 0.16, fallbackNegativeScore: 0.54 },
   };
 }
 
@@ -942,7 +942,7 @@ async function handleApi(request, env) {
     const requestedConfig = normalizeConfig(body.config && typeof body.config === "object" ? body.config : defaultConfig());
     const current = await env.DB.prepare("SELECT config_json FROM devices WHERE id=?").bind(id).first();
     const config = current?.config_json ? normalizeConfig(safeJsonParse(current.config_json, requestedConfig)) : requestedConfig;
-    await env.DB.prepare(`INSERT INTO devices (id,name,site,area,camera_label,status,agent_version,last_seen,fps,cpu,memory,people_count,current_risk,preview_key,config_json,created_at,updated_at) VALUES (?,?,?,?,?,'online',?,?,0,0,0,0,'정상',NULL,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,site=excluded.site,area=excluded.area,camera_label=excluded.camera_label,status='online',agent_version=excluded.agent_version,last_seen=excluded.last_seen,updated_at=excluded.updated_at`).bind(id, String(body.name || id), String(body.site || "미지정 사업장"), String(body.area || "미지정 구역"), String(body.cameraLabel || "브라우저 카메라"), String(body.agentVersion || "browser-webrtc-4.0"), now, JSON.stringify(config), now, now).run();
+    await env.DB.prepare(`INSERT INTO devices (id,name,site,area,camera_label,status,agent_version,last_seen,fps,cpu,memory,people_count,current_risk,preview_key,config_json,created_at,updated_at) VALUES (?,?,?,?,?,'online',?,?,0,0,0,0,'정상',NULL,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,site=excluded.site,area=excluded.area,camera_label=excluded.camera_label,status='online',agent_version=excluded.agent_version,last_seen=excluded.last_seen,updated_at=excluded.updated_at`).bind(id, String(body.name || id), String(body.site || "미지정 사업장"), String(body.area || "미지정 구역"), String(body.cameraLabel || "브라우저 카메라"), String(body.agentVersion || "browser-webrtc-4.1-ppe-fix"), now, JSON.stringify(config), now, now).run();
     const device = await env.DB.prepare("SELECT * FROM devices WHERE id=?").bind(id).first();
     return json({ ok: true, data: mapDevice(device) }, 201);
   }
