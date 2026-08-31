@@ -845,3 +845,6 @@ body.loading::after { content: ""; position: fixed; z-index: 250; left: 0; right
 @media (max-width: 720px) {
   .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* V4.4 PPE active-learning */
+.ppe-learning-current{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.ppe-learning-chip{padding:8px 10px;border-radius:8px;font-weight:800;font-size:13px;border:1px solid currentColor}.ppe-learning-chip.ok{color:#5cff91;background:#06180e}.ppe-learning-chip.bad{color:#ff3c58;background:#22070c}.ppe-learning-chip.unknown{color:#ffad33;background:#241607}.ppe-learning-form{grid-template-columns:repeat(3,minmax(0,1fr))}@media(max-width:820px){.ppe-learning-form{grid-template-columns:1fr}}

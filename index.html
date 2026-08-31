@@ -178,6 +178,19 @@
                 <div class="panel-header"><div><p class="eyebrow">VOICE & EVENT TEST</p><h3>빠른 기능 시험</h3></div></div>
                 <div class="quick-test-grid"><button data-guard-test="helmet" type="button"><span>◉</span><b>안전모</b><small>착용 안내</small></button><button data-guard-test="goggles" type="button"><span>◎</span><b>보안경</b><small>착용 안내</small></button><button data-guard-test="mask" type="button"><span>▱</span><b>마스크</b><small>착용 안내</small></button><button data-guard-test="forklift" type="button"><span>▰</span><b>지게차</b><small>접근 주의</small></button><button data-guard-test="zone" type="button"><span>⌖</span><b>위험구역</b><small>이동 안내</small></button><button data-guard-test="fall" type="button"><span>↘</span><b>넘어짐</b><small>확인 요청</small></button></div>
               </section>
+              <section class="panel ppe-learning-panel">
+                <div class="panel-header"><div><p class="eyebrow">ACTIVE LEARNING</p><h3>AI 학습 피드백</h3></div><span class="ai-badge">MODEL v4.4</span></div>
+                <p>현재 AI 판정을 확인한 뒤 실제 착용 상태를 선택해 저장하세요. 틀린 장면과 애매한 장면이 재학습 데이터로 축적됩니다.</p>
+                <div class="ppe-learning-current" id="ppeLearningCurrent">
+                  <span class="ppe-learning-chip unknown">HAT: CHECK</span><span class="ppe-learning-chip unknown">GOG: CHECK</span><span class="ppe-learning-chip unknown">MASK: CHECK</span>
+                </div>
+                <div class="guard-form-grid ppe-learning-form">
+                  <label>실제 안전모<select id="learnHelmet"><option value="bad">미착용</option><option value="ok">착용</option><option value="unknown">판정불가</option></select></label>
+                  <label>실제 보안경<select id="learnGoggles"><option value="bad">미착용</option><option value="ok">착용</option><option value="unknown">판정불가</option></select></label>
+                  <label>실제 마스크<select id="learnMask"><option value="bad">미착용</option><option value="ok">착용</option><option value="unknown">판정불가</option></select></label>
+                </div>
+                <button class="primary-button full-button" id="savePpeLearningFeedback" type="button">현재 장면 학습데이터로 저장</button>
+              </section>
               <section class="panel browser-notice"><b>운영 안내</b><p>영상은 WebRTC로 관리자에게 직접 전송되고, 위험 이벤트 스냅숏만 중앙 데이터베이스에 저장됩니다. AI 판정은 관리자 확인을 돕는 보조 정보입니다.</p></section>
             </aside>
           </div>
@@ -321,6 +334,6 @@
     <div class="sidebar-scrim" id="sidebarScrim"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
-    <script type="module" src="/app.js?v=4.3.0"></script>
+    <script type="module" src="/app.js?v=4.4.0"></script>
   </body>
 </html>

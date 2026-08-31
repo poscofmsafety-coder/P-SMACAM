@@ -1,3 +1,4 @@
+// Smart Safety Guardian PPE worker v4.4-learning
 /* global ort */
 
 const WORKER_VERSION = "4.3.0";

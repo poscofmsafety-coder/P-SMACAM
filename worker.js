@@ -99,6 +99,18 @@ const SCHEMA = [
     email_status TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS ppe_feedback (
+    id TEXT PRIMARY KEY,
+    device_id TEXT NOT NULL,
+    captured_at TEXT NOT NULL,
+    predicted_json TEXT NOT NULL DEFAULT '{}',
+    actual_json TEXT NOT NULL DEFAULT '{}',
+    image_key TEXT,
+    model_version TEXT NOT NULL DEFAULT '',
+    reviewed INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_ppe_feedback_created_at ON ppe_feedback(created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_media_updated_at ON media(updated_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_events_occurred_at ON events(occurred_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_events_device_id ON events(device_id)`,
@@ -135,7 +147,7 @@ async function readJson(request) {
 
 function defaultConfig() {
   return {
-    version: 6,
+    version: 7,
     zones: [],
     rules: {
       dangerZone: false,
@@ -157,7 +169,7 @@ function defaultConfig() {
       fire: false,
     },
     voice: { enabled: true, cooldownSeconds: 12, volume: 0.95 },
-    detection: { confidence: 0.28, consecutiveFrames: 3, intervalMs: 1000, inferMissingPpeFromPerson: true, fallbackPpeFromAnyAnchor: true, forceFacePpeFallback: true, minPersonHeightRatio: 0.16, fallbackNegativeScore: 0.62, gogglesPositiveMinScore: 0.44, maskPositiveMinScore: 0.46, helmetPositiveMinScore: 0.36 },
+    detection: { confidence: 0.28, consecutiveFrames: 3, intervalMs: 1000, inferMissingPpeFromPerson: true, fallbackPpeFromAnyAnchor: true, forceFacePpeFallback: true, conservativePpeAlert: true, minPersonHeightRatio: 0.16, fallbackNegativeScore: 0.62, gogglesPositiveMinScore: 0.44, maskPositiveMinScore: 0.46, helmetPositiveMinScore: 0.36 },
   };
 }
 
@@ -940,6 +952,29 @@ async function handleApi(request, env) {
     return json({ ok: true, data: { id, aiRecommendation: ai.text, updatedSummary: reflectedSummary, emailStatus: email.status } }, 201);
   }
 
+  if (path === "/api/ppe-feedback" && method === "POST") {
+    const body = await readJson(request);
+    const deviceId = String(body.deviceId || "").trim();
+    if (!deviceId) return error("deviceId가 필요합니다.");
+    const id = randomId("ppefb");
+    const capturedAt = String(body.capturedAt || nowIso());
+    let imageKey = null;
+    if (body.snapshotBase64) {
+      const bytes = base64ToBytes(String(body.snapshotBase64));
+      if (bytes.byteLength > 1400000) return error("학습 이미지는 1.4MB 이하여야 합니다.", 413);
+      imageKey = await putImage(env, `training/ppe/${deviceId}/${id}.jpg`, bytes, "image/jpeg");
+    }
+    await env.DB.prepare(`INSERT INTO ppe_feedback (id,device_id,captured_at,predicted_json,actual_json,image_key,model_version,reviewed,created_at) VALUES (?,?,?,?,?,?,?,1,?)`)
+      .bind(id, deviceId, capturedAt, JSON.stringify(body.predicted || {}), JSON.stringify(body.actual || {}), imageKey, String(body.modelVersion || ""), nowIso()).run();
+    return json({ ok: true, data: { id, imageUrl: imageKey ? `/media/${encodeURIComponent(imageKey)}` : null } }, 201);
+  }
+
+  if (path === "/api/ppe-feedback" && method === "GET") {
+    if (!isAdmin) return error("관리자 권한이 필요합니다.", 403);
+    const rows = await env.DB.prepare(`SELECT id,device_id,captured_at,predicted_json,actual_json,image_key,model_version,created_at FROM ppe_feedback ORDER BY created_at DESC LIMIT 300`).all();
+    return json({ ok: true, data: (rows.results || []).map((row) => ({ ...row, predicted: safeJsonParse(row.predicted_json, {}), actual: safeJsonParse(row.actual_json, {}), imageUrl: row.image_key ? `/media/${encodeURIComponent(row.image_key)}` : null })) });
+  }
+
   if (path === "/api/reports/daily" && method === "GET") {
     const days = Math.min(Math.max(Number(url.searchParams.get("days") || 7), 1), 31);
     const result = await env.DB.prepare(`SELECT substr(occurred_at,1,10) AS day, category, severity, COUNT(*) AS count FROM events WHERE occurred_at >= ? GROUP BY day, category, severity ORDER BY day ASC`).bind(new Date(Date.now() - days * 86400000).toISOString()).all();
@@ -954,7 +989,7 @@ async function handleApi(request, env) {
     const requestedConfig = normalizeConfig(body.config && typeof body.config === "object" ? body.config : defaultConfig());
     const current = await env.DB.prepare("SELECT config_json FROM devices WHERE id=?").bind(id).first();
     const config = current?.config_json ? normalizeConfig(safeJsonParse(current.config_json, requestedConfig)) : requestedConfig;
-    await env.DB.prepare(`INSERT INTO devices (id,name,site,area,camera_label,status,agent_version,last_seen,fps,cpu,memory,people_count,current_risk,preview_key,config_json,created_at,updated_at) VALUES (?,?,?,?,?,'online',?,?,0,0,0,0,'정상',NULL,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,site=excluded.site,area=excluded.area,camera_label=excluded.camera_label,status='online',agent_version=excluded.agent_version,last_seen=excluded.last_seen,config_json=excluded.config_json,updated_at=excluded.updated_at`).bind(id, String(body.name || id), String(body.site || "미지정 사업장"), String(body.area || "미지정 구역"), String(body.cameraLabel || "브라우저 카메라"), String(body.agentVersion || "browser-webrtc-4.2-ppe-fix"), now, JSON.stringify(config), now, now).run();
+    await env.DB.prepare(`INSERT INTO devices (id,name,site,area,camera_label,status,agent_version,last_seen,fps,cpu,memory,people_count,current_risk,preview_key,config_json,created_at,updated_at) VALUES (?,?,?,?,?,'online',?,?,0,0,0,0,'정상',NULL,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,site=excluded.site,area=excluded.area,camera_label=excluded.camera_label,status='online',agent_version=excluded.agent_version,last_seen=excluded.last_seen,config_json=excluded.config_json,updated_at=excluded.updated_at`).bind(id, String(body.name || id), String(body.site || "미지정 사업장"), String(body.area || "미지정 구역"), String(body.cameraLabel || "브라우저 카메라"), String(body.agentVersion || "browser-webrtc-4.4-learning"), now, JSON.stringify(config), now, now).run();
     const device = await env.DB.prepare("SELECT * FROM devices WHERE id=?").bind(id).first();
     return json({ ok: true, data: mapDevice(device) }, 201);
   }

@@ -50,7 +50,7 @@ const ruleGroups = {
 };
 
 const defaultConfig = () => ({
-  version: 6,
+  version: 7,
   zones: [],
   rules: {
     dangerZone: false,
@@ -72,7 +72,7 @@ const defaultConfig = () => ({
     fire: false,
   },
   voice: { enabled: true, cooldownSeconds: 12, volume: 0.95 },
-  detection: { confidence: 0.28, consecutiveFrames: 3, intervalMs: 1000, inferMissingPpeFromPerson: true, fallbackPpeFromAnyAnchor: true, forceFacePpeFallback: true, minPersonHeightRatio: 0.16, fallbackNegativeScore: 0.62, gogglesPositiveMinScore: 0.44, maskPositiveMinScore: 0.46, helmetPositiveMinScore: 0.36 },
+  detection: { confidence: 0.28, consecutiveFrames: 3, intervalMs: 1000, inferMissingPpeFromPerson: true, fallbackPpeFromAnyAnchor: true, forceFacePpeFallback: true, conservativePpeAlert: true, minPersonHeightRatio: 0.16, fallbackNegativeScore: 0.62, gogglesPositiveMinScore: 0.44, maskPositiveMinScore: 0.46, helmetPositiveMinScore: 0.36 },
 });
 
 function normalizeGuardConfig(value) {
@@ -1480,7 +1480,7 @@ async function registerGuard() {
     area: $("#guardArea").value.trim() || "미지정 구역",
   };
   localStorage.setItem("ssg-guard-profile", JSON.stringify({ ...profile, cameraId: $("#guardCameraSelect").value, voiceEnabled: $("#guardVoiceEnabled").checked, zoneEnabled: $("#guardZoneEnabled").checked }));
-  await api("/api/agents/register", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), ...profile, cameraLabel: $("#guardCameraSelect").selectedOptions[0]?.textContent || "브라우저 카메라", agentVersion: "browser-webrtc-4.3-ppe-tristate", config: guard.config }) });
+  await api("/api/agents/register", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), ...profile, cameraLabel: $("#guardCameraSelect").selectedOptions[0]?.textContent || "브라우저 카메라", agentVersion: "browser-webrtc-4.4-learning", config: guard.config }) });
 }
 
 async function fetchGuardConfig() {
@@ -1507,13 +1507,13 @@ function stopGuardTimers() {
 async function sendGuardHeartbeat() {
   if (!guard.active) return;
   try {
-    await api("/api/agents/heartbeat", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), fps: guard.inferenceFps, cpu: 0, memory: 0, peopleCount: guard.peopleCount, currentRisk: guard.currentRisk, agentVersion: "browser-webrtc-4.3-ppe-tristate" }) });
+    await api("/api/agents/heartbeat", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), fps: guard.inferenceFps, cpu: 0, memory: 0, peopleCount: guard.peopleCount, currentRisk: guard.currentRisk, agentVersion: "browser-webrtc-4.4-learning" }) });
   } catch { /* reconnect will retry */ }
 }
 
 function startGuardWorker() {
   guard.worker?.terminate();
-  guard.worker = new Worker("/ppe-worker.js?v=4.3.0");
+  guard.worker = new Worker("/ppe-worker.js?v=4.4.0");
   guard.modelReady = false;
   guard.modelError = null;
   $("#ppeLoading").hidden = false;
@@ -1872,27 +1872,61 @@ function processGuardDetections(message) {
   const rawDetections = message.detections || [];
   const derived = derivePpeTriState(rawDetections, message.sourceWidth, message.sourceHeight);
   const detections = derived.detections;
+  guard.lastPpeAssessment = derived.assessments || [];
   guard.peopleCount = Math.max(rawDetections.filter((item) => item.label === "Person").length, derived.subjects.length);
   const violations = [];
   const rules = guard.config.rules || {};
-  const noHelmet = detections.filter((item) => item.label === "NO-Hardhat");
-  const noGoggles = detections.filter((item) => item.label === "NO-Goggles");
-  const noMask = detections.filter((item) => item.label === "NO-Mask");
   const noHarness = detections.filter((item) => item.label === "No_Harness");
   const falls = detections.filter((item) => item.label === "Fall-Detected");
   const zoneEntries = rules.dangerZone === true && $("#guardZoneEnabled").checked
     ? detectZoneEntries(rawDetections.filter((item) => item.label === "Person"), message.sourceWidth, message.sourceHeight)
     : [];
 
-  if (rules.helmet !== false && noHelmet.length) violations.push(["helmet", { type: "HELMET_NOT_DETECTED", category: "보호구", severity: "high", message: "안전모 미착용 의심 상황이 감지되었습니다.", voice: "안전모를 착용해주세요.", metadata: { count: noHelmet.length } }]);
-  if (rules.safetyGlasses !== false && noGoggles.length) violations.push(["goggles", { type: "SAFETY_GLASSES_NOT_DETECTED", category: "보호구", severity: "medium", message: "보안경 미착용 의심 상황이 감지되었습니다.", voice: "보안경을 착용해주세요.", metadata: { count: noGoggles.length } }]);
-  if (rules.mask !== false && noMask.length) violations.push(["mask", { type: "MASK_NOT_DETECTED", category: "보호구", severity: "medium", message: "마스크 미착용 의심 상황이 감지되었습니다.", voice: "마스크를 착용해주세요.", metadata: { count: noMask.length } }]);
+  // V4.4: every worker receives three PPE states. A direct NF is red and an
+  // uncertain CHECK is orange. In conservative mode both states generate one
+  // combined caption/voice warning instead of three overlapping announcements.
+  const ppeStates = { helmet: [], goggles: [], mask: [] };
+  for (const assessment of derived.assessments || []) {
+    for (const type of ["helmet", "goggles", "mask"]) {
+      const item = assessment.ppe?.[type];
+      if (item) ppeStates[type].push(item.state);
+    }
+  }
+
+  const conservative = guard.config.detection?.conservativePpeAlert !== false;
+  const activePpeWarnings = [];
+  const ppeLabel = { helmet: "안전모", goggles: "보안경", mask: "마스크" };
+  const ppeRule = { helmet: "helmet", goggles: "safetyGlasses", mask: "mask" };
+  for (const type of ["helmet", "goggles", "mask"]) {
+    if (rules[ppeRule[type]] === false) continue;
+    const states = ppeStates[type];
+    const hasBad = states.includes("bad");
+    const hasUnknown = states.includes("unknown");
+    if (hasBad || (conservative && hasUnknown)) {
+      activePpeWarnings.push({ type, state: hasBad ? "bad" : "unknown", label: ppeLabel[type] });
+    }
+  }
+
+  if (activePpeWarnings.length) {
+    const labels = activePpeWarnings.map((x) => x.label);
+    const spoken = `${labels.join(", ")}를 착용해주세요.`;
+    const detail = activePpeWarnings.map((x) => `${x.label}:${x.state === "bad" ? "NF" : "CHECK"}`).join(" / ");
+    violations.push(["ppe-combined", {
+      type: "PPE_COMBINED_ALERT",
+      category: "보호구",
+      severity: activePpeWarnings.some((x) => x.type === "helmet" && x.state === "bad") ? "high" : "medium",
+      message: `${detail} - 보호구 착용 상태를 확인해주세요.`,
+      voice: spoken,
+      metadata: { ppe: activePpeWarnings, modelVersion: "4.4-learning" },
+    }]);
+  }
+
   if (rules.harness && noHarness.length) violations.push(["harness", { type: "HARNESS_NOT_DETECTED", category: "보호구", severity: "high", message: "안전대 미착용 의심 상황이 감지되었습니다.", voice: "안전대를 착용해주세요.", metadata: { count: noHarness.length } }]);
   if (rules.fall !== false && falls.length) violations.push(["fall", { type: "FALL_CANDIDATE", category: "불안전 행동", severity: "critical", message: "넘어짐 의심 상황이 감지되었습니다.", voice: "넘어짐 위험이 감지되었습니다. 확인해주세요.", metadata: { count: falls.length } }]);
   if (zoneEntries.length) violations.push(["zone", { type: "DANGER_ZONE_ENTRY", category: "위험구역", severity: "high", message: `${zoneEntries[0].zone.name}에 작업자가 진입했습니다.`, voice: "위험구역입니다. 즉시 이동해주세요.", metadata: { count: zoneEntries.length, zone: zoneEntries[0].zone.name } }]);
 
   const presentKeys = new Set(violations.map(([key]) => key));
-  for (const key of ["helmet", "goggles", "mask", "harness", "fall", "zone"]) {
+  for (const key of ["ppe-combined", "harness", "fall", "zone"]) {
     if (!presentKeys.has(key)) guard.streaks.set(key, 0);
   }
   for (const [key, event] of violations) confirmViolation(key, event);
@@ -1900,6 +1934,7 @@ function processGuardDetections(message) {
   guard.detections = detections;
   drawGuardOverlay(detections, message.sourceWidth, message.sourceHeight, zoneEntries);
   updateGuardUi();
+  updatePpeLearningPanel();
 }
 
 function confirmViolation(key, event) {
@@ -2093,6 +2128,62 @@ function pumpVoiceQueue() {
   utterance.onend = finish;
   utterance.onerror = finish;
   speechSynthesis.speak(utterance);
+}
+
+function ppeStateText(state) {
+  if (state === "ok") return "OK";
+  if (state === "bad") return "NF";
+  return "CHECK";
+}
+
+function currentPpeSummary() {
+  const assessments = guard.lastPpeAssessment || [];
+  const summary = { helmet: "unknown", goggles: "unknown", mask: "unknown" };
+  for (const type of Object.keys(summary)) {
+    const states = assessments.map((a) => a.ppe?.[type]?.state).filter(Boolean);
+    if (states.includes("bad")) summary[type] = "bad";
+    else if (states.includes("unknown")) summary[type] = "unknown";
+    else if (states.includes("ok")) summary[type] = "ok";
+  }
+  return summary;
+}
+
+function updatePpeLearningPanel() {
+  const box = $("#ppeLearningCurrent");
+  if (!box) return;
+  const state = currentPpeSummary();
+  box.innerHTML = `
+    <span class="ppe-learning-chip ${state.helmet}">HAT: ${ppeStateText(state.helmet)}</span>
+    <span class="ppe-learning-chip ${state.goggles}">GOG: ${ppeStateText(state.goggles)}</span>
+    <span class="ppe-learning-chip ${state.mask}">MASK: ${ppeStateText(state.mask)}</span>`;
+}
+
+async function savePpeLearningFeedback() {
+  if (!guard.active) return toast("먼저 지킴이를 시작해주세요.");
+  const actual = {
+    helmet: $("#learnHelmet")?.value || "unknown",
+    goggles: $("#learnGoggles")?.value || "unknown",
+    mask: $("#learnMask")?.value || "unknown",
+  };
+  const predicted = currentPpeSummary();
+  const snapshotBase64 = captureGuardSnapshot(0.72, 960);
+  if (!snapshotBase64) return toast("카메라 화면을 캡처할 수 없습니다.");
+  try {
+    await api("/api/ppe-feedback", {
+      method: "POST",
+      body: JSON.stringify({
+        deviceId: getGuardDeviceId(),
+        capturedAt: new Date().toISOString(),
+        predicted,
+        actual,
+        snapshotBase64,
+        modelVersion: "4.4-learning",
+      }),
+    });
+    toast("학습 피드백을 저장했습니다. 재학습 데이터로 활용됩니다.");
+  } catch (error) {
+    toast(`학습 피드백 저장 실패: ${error.message || error}`);
+  }
 }
 
 async function runGuardTest(kind) {
@@ -2694,3 +2785,5 @@ async function init() {
 }
 
 init();
+
+window.addEventListener("DOMContentLoaded", () => $("#savePpeLearningFeedback")?.addEventListener("click", savePpeLearningFeedback));
