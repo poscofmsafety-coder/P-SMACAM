@@ -1,14 +1,24 @@
+스마트 안전지킴이 V4 GitHub 업로드
+
 1. ZIP 압축을 풉니다.
-2. 이 폴더 안의 파일 전체를 기존 GitHub 저장소 루트에 덮어씁니다.
-3. Commit & Push 합니다.
-4. Cloudflare 자동 배포 로그에서 D1과 SignalingRoom Durable Object 생성 성공을 확인합니다.
-5. 배포 후 Ctrl+F5로 새로고침합니다.
+2. 폴더 안의 파일/폴더 전체를 기존 GitHub 저장소 루트에 덮어씁니다.
+3. Commit changes를 누릅니다.
+4. Cloudflare Workers Builds의 자동 배포가 완료될 때까지 기다립니다.
+5. 관리자와 사용자 브라우저에서 Ctrl+F5로 강력 새로고침합니다.
 
-기본 로그인
-- 관리자: 2468
-- 사용자: 1357
+Cloudflare 설정
+- 서비스: Workers
+- Build command: 없음
+- Deploy command: npx wrangler deploy
+- Root directory: /
 
-배포 후 Cloudflare Variables/Secrets에서 반드시 변경
-- ADMIN_PIN
-- USER_PIN
-- SESSION_SECRET
+배포 후 필수 점검
+- /api/health version 4.0.0
+- 실시간 WebRTC 영상
+- 무전 양방향 음성
+- 작업중지권 긴급 알람
+- AI 사진분석
+- TBM 생성·의견제출
+
+세부 환경변수: docs/V4_SETUP.md
+Gmail 자동연동: docs/GMAIL_TBM_INTEGRATION.md

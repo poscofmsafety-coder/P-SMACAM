@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#07131d" />
+    <meta name="description" content="POSCO Future M 스마트 안전지킴이 - 브라우저 AI 안전 CCTV와 통합 관제" />
+    <title>스마트 안전지킴이 | POSCO Future M</title>
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="login-screen" id="loginScreen" hidden>
+      <div class="login-orbit orbit-a"></div>
+      <div class="login-orbit orbit-b"></div>
+      <section class="login-card" aria-labelledby="loginTitle">
+        <div class="brand brand-login">
+          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div><strong>POSCO FUTURE M</strong><small>Smart Safety Guardian</small></div>
+        </div>
+        <p class="eyebrow">AI EDGE SAFETY PLATFORM</p>
+        <h1 id="loginTitle">스마트 안전지킴이</h1>
+        <p class="login-copy">관리자는 전체 현장을 통합 관제하고, 현장 사용자는 카메라를 켜 안전지킴이를 시작합니다.</p>
+        <div class="role-tabs" role="tablist" aria-label="접속 모드">
+          <button class="role-tab active" data-login-role="admin" type="button">관리자 모드</button>
+          <button class="role-tab" data-login-role="user" type="button">사용자 모드</button>
+        </div>
+        <form id="loginForm" class="login-form">
+          <input type="hidden" id="loginRole" value="admin" />
+          <label><span>접속 비밀번호</span><input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="비밀번호 입력" required /></label>
+          <button class="primary-button full-button" id="loginButton" type="submit">접속하기</button>
+        </form>
+        <p class="login-help" id="loginHelp">관리자용 통합관제 화면으로 접속합니다.</p>
+      </section>
+    </div>
+
+    <div class="app-shell" id="appShell" hidden>
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div><strong>POSCO FUTURE M</strong><small>스마트 안전지킴이</small></div>
+        </div>
+
+        <div class="product-title"><span class="pulse-dot"></span>AI 안전 통합관제</div>
+
+        <nav class="nav-list admin-only" aria-label="관리자 메뉴">
+          <button class="nav-item active" data-page="overview" type="button"><span>⌂</span>통합 대시보드</button>
+          <button class="nav-item" data-page="live" type="button"><span>▣</span>실시간 관제</button>
+          <button class="nav-item stop-nav-item" data-page="stop-work" type="button"><span>■</span>작업중지권</button>
+          <button class="nav-item" data-page="devices" type="button"><span>▤</span>장치 관리</button>
+          <button class="nav-item" data-page="zones" type="button"><span>⌖</span>위험구역 설정</button>
+          <button class="nav-item" data-page="ppe" type="button"><span>◉</span>근로자 보호구</button>
+          <button class="nav-item" data-page="behavior" type="button"><span>⚠</span>불안전 행동</button>
+          <button class="nav-item" data-page="environment" type="button"><span>◇</span>작업환경</button>
+          <button class="nav-item" data-page="equipment" type="button"><span>▰</span>중장비</button>
+          <button class="nav-item" data-page="tbm" type="button"><span>☷</span>TBM 안전소통</button>
+          <button class="nav-item" data-page="events" type="button"><span>≡</span>이벤트 센터</button>
+          <button class="nav-item" data-page="reports" type="button"><span>↗</span>리포트</button>
+          <button class="nav-item" data-page="settings" type="button"><span>⚙</span>설정</button>
+        </nav>
+
+        <nav class="nav-list user-only" aria-label="현장 사용자 메뉴">
+          <button class="nav-item active" data-page="guard" type="button"><span>◉</span>현장 지킴이</button>
+          <button class="nav-item" data-page="user-help" type="button"><span>?</span>사용 안내</button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="edge-status"><span class="status-orb"></span><div><b>Cloud Edge</b><small id="cloudStatusText">연결 확인 중</small></div></div>
+          <small>WebRTC Edition v4.0</small>
+        </div>
+      </aside>
+
+      <main class="main-area">
+        <header class="topbar">
+          <button class="mobile-menu" id="mobileMenu" aria-label="메뉴 열기" type="button">☰</button>
+          <div class="topbar-title"><p class="eyebrow">POSCO FUTURE M · SMART FACTORY SAFETY</p><h1 id="pageTitle">통합 대시보드</h1></div>
+          <div class="topbar-actions">
+            <button class="top-action admin-only" id="qrOpenButton" type="button"><span>▦</span><b>현장 QR</b></button>
+            <button class="top-action user-only" id="guardTopButton" type="button"><span class="guardian-toggle-dot"></span><b>지킴이 시작</b></button>
+            <div class="system-chip admin-only"><span class="pulse-dot"></span>AI 관제 운영 중</div>
+            <span class="role-badge" id="roleBadge">관리자</span>
+            <div class="clock" id="clock"></div>
+            <button class="icon-button" id="logoutButton" title="로그아웃" type="button">⇥</button>
+          </div>
+        </header>
+
+        <section class="page active admin-only" id="page-overview">
+          <div class="critical-alert-strip" id="workStopOverviewAlert" hidden><div><span class="critical-pulse"></span><b>작업중지권 요청이 접수되었습니다.</b><small id="workStopOverviewText">즉시 현장을 확인해주세요.</small></div><button class="danger-button" data-goto="stop-work" type="button">요청 확인</button></div>
+          <div class="hero-panel">
+            <div>
+              <p class="eyebrow">BATTERY MATERIALS · SAFETY INTELLIGENCE</p>
+              <h2>현장의 위험 신호를<br /><em>사고 전에</em> 발견합니다.</h2>
+              <p>브라우저 카메라를 AI 안전 CCTV로 전환하고 여러 현장을 한 화면에서 실시간으로 관제합니다.</p>
+              <div class="hero-actions"><button class="primary-button" data-goto="live" type="button">실시간 관제 열기</button><button class="secondary-button" id="heroQrButton" type="button">현장 QR 만들기</button></div>
+            </div>
+            <div class="battery-visual" aria-hidden="true"><div class="battery-cell cell-a"></div><div class="battery-cell cell-b"></div><div class="battery-cell cell-c"></div><div class="energy-line line-a"></div><div class="energy-line line-b"></div><div class="core-ring"><span>AI</span></div></div>
+          </div>
+          <div class="kpi-grid" id="kpiGrid"></div>
+          <div class="dashboard-grid">
+            <article class="panel panel-large">
+              <div class="panel-header"><div><p class="eyebrow">LIVE EDGE NETWORK</p><h3>실시간 관제 장치</h3></div><button class="text-button" data-goto="live" type="button">전체 보기 →</button></div>
+              <div class="device-grid compact" id="overviewDevices"></div>
+            </article>
+            <article class="panel">
+              <div class="panel-header"><div><p class="eyebrow">AI SAFETY BRIEFING</p><h3>AI 관제 브리핑</h3></div><span class="ai-badge">AI</span></div>
+              <div class="ai-briefing" id="aiBriefing"></div>
+            </article>
+            <article class="panel panel-large">
+              <div class="panel-header"><div><p class="eyebrow">REAL-TIME EVENTS</p><h3>최근 위험 이벤트</h3></div><button class="text-button" data-goto="events" type="button">이벤트 센터 →</button></div>
+              <div class="event-list" id="overviewEvents"></div>
+            </article>
+            <article class="panel">
+              <div class="panel-header"><div><p class="eyebrow">TODAY BY CATEGORY</p><h3>오늘의 위험 유형</h3></div></div>
+              <div class="category-chart" id="categoryChart"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="page user-only" id="page-guard">
+          <div class="section-toolbar guard-toolbar">
+            <div><p class="eyebrow">BROWSER EDGE SAFETY</p><h2>현장 스마트 안전지킴이</h2><p class="section-lead">별도 설치 없이 카메라를 연결해 실시간 관제와 보호구 감지를 시작합니다. 마이크는 무전 통화 연결 시에만 사용합니다.</p></div>
+            <div class="toolbar-actions"><span class="guard-status-pill" id="guardStatusPill"><i></i><b>대기 중</b></span><button class="stop-work-button" id="workStopButton" type="button">■ 작업중지권</button><button class="secondary-button alarm-toggle-button" id="guardAlarmButton" type="button" aria-pressed="false">🔊 알람 켜짐</button><button class="primary-button guard-start-button" id="guardStartButton" type="button">지킴이 시작</button></div>
+          </div>
+          <div class="guard-layout">
+            <section class="panel guard-camera-panel">
+              <div class="guard-camera-stage" id="guardCameraStage">
+                <video id="guardVideo" autoplay muted playsinline></video>
+                <canvas id="guardOverlay"></canvas>
+                <div class="guard-camera-placeholder" id="guardCameraPlaceholder"><div class="camera-power-icon">◉</div><h3>지킴이 시작을 눌러주세요</h3><p>최초 한 번 카메라 권한을 허용하면 설치 없이 바로 작동합니다. 무전 통화 시에는 별도로 마이크 권한을 요청합니다.</p></div>
+                <div class="guard-live-badge" id="guardLiveBadge">● EDGE LIVE</div>
+                <div class="guard-warning-banner" id="guardWarningBanner"></div>
+                <div class="model-loading" id="ppeLoading" hidden><span></span><b id="ppeLoadingText">보호구 AI 준비 중</b><small id="ppeLoadingProgress">0%</small></div>
+              </div>
+              <div class="guard-metrics">
+                <div><span>장치 상태</span><b id="guardConnectionMetric">OFFLINE</b></div>
+                <div><span>보호구 AI</span><b id="guardModelMetric">대기</b></div>
+                <div><span>감지 인원</span><b id="guardPeopleMetric">0명</b></div>
+                <div><span>분석 속도</span><b id="guardFpsMetric">0.0 FPS</b></div>
+                <div><span>중앙 관제</span><b id="guardViewerMetric">0명 연결</b></div>
+              </div>
+            </section>
+            <aside class="guard-side-stack">
+              <section class="panel guard-settings-panel">
+                <div class="panel-header"><div><p class="eyebrow">DEVICE PROFILE</p><h3>장치 정보</h3></div><span class="browser-edge-badge">WEB EDGE</span></div>
+                <div class="guard-form-grid">
+                  <label>장치 이름<input id="guardDeviceName" placeholder="예: 노트북 1" /></label>
+                  <label>사업장<input id="guardSite" placeholder="예: 포항 양극재 1공장" /></label>
+                  <label>설치 구역<input id="guardArea" placeholder="예: 원료 투입구역" /></label>
+                  <label>카메라<select id="guardCameraSelect"><option value="">기본 카메라</option></select></label>
+                </div>
+                <div class="guard-option-row">
+                  <label class="switch-row compact"><span><b>한국어 음성·알람</b><small>안전모·보안경·마스크 미착용 등 위험 감지 시 안내</small></span><input type="checkbox" id="guardVoiceEnabled" checked /></label>
+                  <label class="switch-row compact"><span><b>위험구역 감지</b><small>관리자가 위험구역을 사용하도록 설정한 경우에만 적용</small></span><input type="checkbox" id="guardZoneEnabled" checked /></label>
+                </div>
+                <button class="secondary-button full-button" id="guardSaveProfile" type="button">장치 정보 저장</button>
+                <p class="device-id-note">장치 ID <code id="guardDeviceId"></code></p>
+              </section>
+              <section class="panel radio-panel">
+                <div class="panel-header"><div><p class="eyebrow">TWO-WAY RADIO</p><h3>관제센터 무전</h3></div><span class="radio-indicator" id="guardRadioIndicator">대기</span></div>
+                <p>관제센터를 호출하거나 수신된 연락에 응답할 수 있습니다.</p>
+                <button class="primary-button full-button" id="guardCallAdminButton" type="button">관제센터 호출</button>
+              </section>
+              <section class="panel photo-analysis-panel">
+                <div class="panel-header"><div><p class="eyebrow">AI PHOTO SAFETY CHECK</p><h3>현장 사진 AI 분석</h3></div><span class="ai-badge">AI</span></div>
+                <p>현재 카메라 화면을 캡처해 객관적으로 확인되는 위험요인과 즉시 조치를 분석합니다.</p>
+                <label class="switch-row compact"><span><b>분석결과 이메일 발송</b><small>관리자 이메일이 설정된 경우 발송합니다.</small></span><input type="checkbox" id="guardAnalysisEmail" checked /></label>
+                <button class="primary-button full-button" id="guardPhotoAnalyzeButton" type="button">사진 캡처·AI 분석</button>
+              </section>
+              <section class="panel tbm-worker-panel">
+                <div class="panel-header"><div><p class="eyebrow">TBM SAFETY COMMUNICATION</p><h3>오늘의 TBM</h3></div><span class="radio-indicator" id="guardTbmStatus">대기</span></div>
+                <div class="tbm-mini-summary" id="guardTbmSummary">관리자가 TBM 내용을 등록하면 요약이 표시됩니다.</div>
+                <div class="button-stack"><button class="secondary-button" id="guardTbmSpeak" type="button">TBM 요점 음성 듣기</button></div>
+                <label>작업자 이름<input id="guardWorkerName" placeholder="예: 홍길동" /></label>
+                <label>현장 의견<textarea id="guardTbmOpinion" rows="4" placeholder="추가 위험요인, 작업상 어려움, 개선 의견을 입력해주세요."></textarea></label>
+                <button class="primary-button full-button" id="guardTbmSubmit" type="button">의견 제출·담당자 전송</button>
+              </section>
+              <section class="panel guard-quick-panel">
+                <div class="panel-header"><div><p class="eyebrow">VOICE & EVENT TEST</p><h3>빠른 기능 시험</h3></div></div>
+                <div class="quick-test-grid"><button data-guard-test="helmet" type="button"><span>◉</span><b>안전모</b><small>착용 안내</small></button><button data-guard-test="goggles" type="button"><span>◎</span><b>보안경</b><small>착용 안내</small></button><button data-guard-test="mask" type="button"><span>▱</span><b>마스크</b><small>착용 안내</small></button><button data-guard-test="forklift" type="button"><span>▰</span><b>지게차</b><small>접근 주의</small></button><button data-guard-test="zone" type="button"><span>⌖</span><b>위험구역</b><small>이동 안내</small></button><button data-guard-test="fall" type="button"><span>↘</span><b>넘어짐</b><small>확인 요청</small></button></div>
+              </section>
+              <section class="panel browser-notice"><b>운영 안내</b><p>영상은 WebRTC로 관리자에게 직접 전송되고, 위험 이벤트 스냅숏만 중앙 데이터베이스에 저장됩니다. AI 판정은 관리자 확인을 돕는 보조 정보입니다.</p></section>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page admin-only" id="page-live">
+          <div class="section-toolbar"><div><p class="eyebrow">WEBRTC MULTI-CAMERA CONTROL</p><h2>실시간 통합관제</h2><p class="section-lead">컷 이미지가 아닌 WebRTC 실시간 영상으로 현장을 관제합니다. 영상을 클릭하면 큰 화면으로 끊김 없이 확인할 수 있습니다.</p></div><div class="toolbar-actions"><button class="secondary-button" id="refreshLive" type="button">연결 새로고침</button><button class="primary-button" id="simulateEvent" type="button">위험 이벤트 시연</button></div></div>
+          <div class="device-grid live-grid" id="liveDevices"></div>
+        </section>
+
+        <section class="page admin-only" id="page-stop-work">
+          <div class="section-toolbar"><div><p class="eyebrow">STOP WORK AUTHORITY</p><h2>작업중지권 관제</h2><p class="section-lead">현장 작업자가 입력한 사유를 즉시 확인하고 무전 연결, 작업중지 확인, 조치 및 해제 상태를 관리합니다.</p></div><button class="danger-button" id="workStopAlarmTest" type="button">긴급 알람 시험</button></div>
+          <div class="stop-work-kpi" id="workStopKpi"></div>
+          <div class="stop-work-list" id="workStopList"></div>
+        </section>
+
+        <section class="page admin-only" id="page-tbm">
+          <div class="section-toolbar"><div><p class="eyebrow">TBM SAFETY COMMUNICATION</p><h2>TBM 안전소통 관리자</h2><p class="section-lead">D-안전회의 메일을 붙여 넣으면 작업내용과 안전조치를 요약하고, 작업자 의견을 반영해 추가 위험요인과 보완조치를 축적합니다.</p></div></div>
+          <div class="tbm-admin-grid">
+            <section class="panel tbm-compose-panel">
+              <div class="panel-header"><div><p class="eyebrow">D-1 SAFETY MEETING MAIL</p><h3>메일 내용 등록</h3></div></div>
+              <div class="form-grid two-column">
+                <label>메일 제목<input id="tbmSubject" placeholder="예: 8월 29일 D-안전회의 작업계획" /></label>
+                <label>작업일자<input id="tbmWorkDate" type="date" /></label>
+                <label>보낸 사람<input id="tbmSourceEmail" type="email" placeholder="sender@example.com" /></label>
+                <label>담당자 이메일<input id="tbmManagerEmail" type="email" placeholder="manager@example.com" /></label>
+              </div>
+              <label>메일 본문<textarea id="tbmEmailBody" rows="13" placeholder="D-안전회의 메일의 작업내용과 안전조치사항을 붙여 넣으세요."></textarea></label>
+              <label class="switch-row compact"><span><b>요약 결과 메일 발송</b><small>메일 서비스 설정 시 담당자에게 자동 발송</small></span><input id="tbmSendEmail" type="checkbox" checked /></label>
+              <button class="primary-button full-button" id="tbmCreateSession" type="button">AI 요약 생성·TBM 활성화</button>
+            </section>
+            <section class="panel tbm-result-panel">
+              <div class="panel-header"><div><p class="eyebrow">ACTIVE TBM BRIEFING</p><h3>현재 TBM 요약</h3></div><span class="ai-badge">AI</span></div>
+              <div class="tbm-result-meta" id="tbmResultMeta">활성화된 TBM이 없습니다.</div>
+              <pre class="analysis-output" id="tbmResultText">메일 내용을 입력하고 AI 요약을 생성해주세요.</pre>
+              <div class="button-stack horizontal"><button class="secondary-button" id="tbmSpeakSummary" type="button">요점 음성 전파</button><button class="secondary-button" id="tbmRefresh" type="button">새로고침</button></div>
+            </section>
+            <section class="panel tbm-feedback-panel full-span">
+              <div class="panel-header"><div><p class="eyebrow">WORKER VOICE</p><h3>작업자 의견 및 AI 보완사항</h3></div></div>
+              <div class="tbm-feedback-list" id="tbmFeedbackList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page admin-only" id="page-devices">
+          <div class="section-toolbar"><div><p class="eyebrow">EDGE DEVICE MANAGEMENT</p><h2>장치 관리</h2></div><button class="primary-button" id="deviceQrButton" type="button">새 장치 QR</button></div>
+          <div class="panel table-panel"><table class="data-table"><thead><tr><th>장치</th><th>사업장/구역</th><th>상태</th><th>작업자</th><th>최근 연결</th><th>관리</th></tr></thead><tbody id="deviceTableBody"></tbody></table></div>
+        </section>
+
+        <section class="page admin-only" id="page-zones">
+          <div class="section-toolbar"><div><p class="eyebrow">REMOTE ZONE EDITOR</p><h2>위험구역 설정 모드</h2><p class="section-lead">장치별로 위험구역을 사용하거나 사용하지 않을 수 있습니다. 사용 시 실시간 영상 위에 다각형 구역을 지정합니다.</p></div><div class="toolbar-actions"><button class="secondary-button" id="disableZone" type="button">위험구역 미사용</button><button class="secondary-button" id="clearZone" type="button">구역 초기화</button><button class="primary-button" id="saveZone" type="button">설정 저장</button></div></div>
+          <div class="config-layout"><aside class="panel config-sidebar"><label>대상 장치<select id="zoneDeviceSelect"></select></label><label class="switch-row zone-use-switch"><span><b>위험구역 기능 사용</b><small>끄면 해당 장치에서 구역 진입 감지를 하지 않습니다.</small></span><input id="zoneUseEnabled" type="checkbox" /></label><label>구역 이름<input id="zoneName" value="출입 제한 구역" /></label><label>위험 등급<select id="zoneSeverity"><option value="medium">주의</option><option value="high" selected>위험</option><option value="critical">긴급</option></select></label><div class="instruction-card"><b>사용 방법</b><ol><li>‘위험구역 기능 사용’을 켭니다.</li><li>카메라 화면을 클릭해 꼭짓점을 3개 이상 지정합니다.</li><li>저장하면 해당 지킴이에 자동 적용됩니다.</li><li>구역 감지가 필요 없으면 ‘위험구역 미사용’을 누릅니다.</li></ol></div></aside><div class="panel zone-canvas-panel"><canvas id="zoneCanvas" width="1280" height="720"></canvas><div class="zone-disabled-cover" id="zoneDisabledCover"><div><b>위험구역 감지 미사용</b><span>왼쪽에서 기능을 켜면 구역을 설정할 수 있습니다.</span></div></div><div class="zone-legend"><span><i class="legend-dot red"></i>위험구역</span><span><i class="legend-dot cyan"></i>작업자 기준점</span></div></div></div>
+        </section>
+
+        <section class="page admin-only" id="page-ppe">
+          <div class="section-toolbar"><div><p class="eyebrow">PERSONAL PROTECTIVE EQUIPMENT</p><h2>근로자 보호구 감지</h2></div><button class="primary-button rule-save" type="button">규칙 저장</button></div>
+          <div class="config-layout"><aside class="panel config-sidebar"><label>대상 장치<select class="rule-device-select"></select></label><div class="voice-card"><span>자동 음성 경고</span><b>안전모·보안경·마스크 미착용 의심 시 순서대로 안내합니다.</b><div class="button-stack"><button class="secondary-button speak-sample" data-text="안전모를 착용해주세요." type="button">안전모 음성</button><button class="secondary-button speak-sample" data-text="보안경을 착용해주세요." type="button">보안경 음성</button><button class="secondary-button speak-sample" data-text="마스크를 착용해주세요." type="button">마스크 음성</button></div></div></aside><div class="feature-grid" data-rule-group="ppe"></div></div>
+        </section>
+
+        <section class="page admin-only" id="page-behavior">
+          <div class="section-toolbar"><div><p class="eyebrow">UNSAFE BEHAVIOR ANALYTICS</p><h2>불안전 행동 감지</h2></div><button class="primary-button rule-save" type="button">규칙 저장</button></div>
+          <div class="config-layout"><aside class="panel config-sidebar"><label>대상 장치<select class="rule-device-select"></select></label><div class="voice-card"><span>음성 경고 예시</span><b>“위험구역입니다. 즉시 이동해주세요.”</b><button class="secondary-button speak-sample" data-text="위험구역입니다. 즉시 이동해주세요." type="button">음성 듣기</button></div></aside><div class="feature-grid" data-rule-group="behavior"></div></div>
+        </section>
+
+        <section class="page admin-only" id="page-environment">
+          <div class="section-toolbar"><div><p class="eyebrow">WORKPLACE CONDITION</p><h2>작업환경 불안전 상태</h2></div><button class="primary-button rule-save" type="button">규칙 저장</button></div>
+          <div class="config-layout"><aside class="panel config-sidebar"><label>대상 장치<select class="rule-device-select"></select></label><div class="voice-card"><span>AI 판정 원칙</span><b>불량 확정이 아닌 “관리자 확인 필요”로 표시</b></div></aside><div class="feature-grid" data-rule-group="environment"></div></div>
+        </section>
+
+        <section class="page admin-only" id="page-equipment">
+          <div class="section-toolbar"><div><p class="eyebrow">MOBILE EQUIPMENT SAFETY</p><h2>중장비 위험사항</h2></div><button class="primary-button rule-save" type="button">규칙 저장</button></div>
+          <div class="config-layout"><aside class="panel config-sidebar"><label>대상 장치<select class="rule-device-select"></select></label><div class="voice-card"><span>음성 경고 예시</span><b>“지게차가 지나갑니다. 주의하세요.”</b><button class="secondary-button speak-sample" data-text="지게차가 지나갑니다. 주의하세요." type="button">음성 듣기</button></div></aside><div class="feature-grid" data-rule-group="equipment"></div></div>
+        </section>
+
+        <section class="page admin-only" id="page-events">
+          <div class="section-toolbar"><div><p class="eyebrow">SAFETY EVENT CENTER</p><h2>이벤트 센터</h2></div><button class="secondary-button" id="exportEvents" type="button">CSV 내보내기</button></div>
+          <div class="filter-bar panel"><select id="eventDeviceFilter"><option value="">전체 장치</option></select><select id="eventCategoryFilter"><option value="">전체 유형</option><option>위험구역</option><option>보호구</option><option>불안전 행동</option><option>작업환경</option><option>중장비</option></select><select id="eventSeverityFilter"><option value="">전체 등급</option><option value="critical">긴급</option><option value="high">위험</option><option value="medium">주의</option></select><button class="primary-button" id="applyEventFilter" type="button">조회</button></div>
+          <div class="panel table-panel"><table class="data-table"><thead><tr><th>발생시간</th><th>장치</th><th>유형</th><th>등급</th><th>내용</th><th>상태</th><th>조치</th></tr></thead><tbody id="eventTableBody"></tbody></table></div>
+        </section>
+
+        <section class="page admin-only" id="page-reports">
+          <div class="section-toolbar"><div><p class="eyebrow">SAFETY INTELLIGENCE REPORT</p><h2>리포트</h2></div><button class="primary-button" id="printReport" type="button">리포트 인쇄</button></div>
+          <div class="report-grid"><div class="panel"><div class="panel-header"><h3>최근 7일 이벤트 추이</h3></div><div class="trend-chart" id="trendChart"></div></div><div class="panel"><div class="panel-header"><h3>AI 개선 권고</h3></div><div class="recommendation-list" id="recommendations"></div></div></div>
+        </section>
+
+        <section class="page admin-only" id="page-settings">
+          <div class="section-toolbar"><div><p class="eyebrow">SYSTEM CONFIGURATION</p><h2>설정</h2></div></div>
+          <div class="settings-grid">
+            <div class="panel settings-card"><h3>현장 접속 QR</h3><p>휴대폰이나 다른 노트북에서 QR을 스캔해 사용자 모드로 접속합니다.</p><button class="primary-button" id="settingsQrButton" type="button">QR 코드 열기</button></div>
+            <div class="panel settings-card"><h3>한국어 음성 알림</h3><div class="button-stack"><button class="secondary-button speak-sample" data-text="안전모를 착용해주세요." type="button">안전모 경고 듣기</button><button class="secondary-button speak-sample" data-text="보안경을 착용해주세요." type="button">보안경 경고 듣기</button><button class="secondary-button speak-sample" data-text="마스크를 착용해주세요." type="button">마스크 경고 듣기</button><button class="secondary-button speak-sample" data-text="지게차가 지나갑니다. 주의하세요." type="button">지게차 경고 듣기</button><button class="secondary-button speak-sample" data-text="위험구역입니다. 즉시 이동해주세요." type="button">위험구역 경고 듣기</button></div></div>
+            <div class="panel settings-card"><h3>실시간 연결</h3><div class="connection-details"><span>영상 전송</span><b>WebRTC P2P</b><span>신호 서버</span><b>Durable Objects WebSocket</b><span>이벤트 저장</span><b>Cloudflare D1</b><span>현재 API</span><code id="apiOrigin"></code></div></div>
+            <div class="panel settings-card warning-card"><h3>초기 비밀번호 변경</h3><p>GitHub의 <code>wrangler.jsonc</code> 또는 Cloudflare Secret에서 ADMIN_PIN, USER_PIN, SESSION_SECRET을 운영값으로 변경하세요.</p></div>
+          </div>
+        </section>
+
+        <section class="page user-only" id="page-user-help">
+          <div class="section-toolbar"><div><p class="eyebrow">FIELD USER GUIDE</p><h2>사용 안내</h2></div></div>
+          <div class="help-grid"><article class="panel"><b>1. 지킴이 시작</b><p>카메라 사용을 허용합니다. 마이크는 무전 통화를 시작하거나 응답할 때 별도로 허용합니다.</p></article><article class="panel"><b>2. 장치 정보 저장</b><p>노트북 또는 휴대폰 이름과 현장 구역을 입력합니다.</p></article><article class="panel"><b>3. 안전 경고 확인</b><p>안전모·보안경·마스크 미착용 의심 및 위험구역 진입 시 화면과 한국어 음성으로 안내됩니다. 알람 버튼으로 음성만 끌 수 있습니다.</p></article><article class="panel"><b>4. 관제센터 무전</b><p>호출에 응답하면 양방향 음성이 연결됩니다. 통화 버튼으로 내 마이크를 켜거나 음소거할 수 있습니다.</p></article></div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop live-view-backdrop" id="liveViewModal" hidden>
+      <section class="live-view-modal" role="dialog" aria-modal="true" aria-labelledby="liveViewTitle">
+        <header class="live-view-header">
+          <div><p class="eyebrow">LIVE WEBRTC MONITORING</p><h2 id="liveViewTitle">실시간 영상</h2><p id="liveViewSubtitle">현장 장치 연결 중</p></div>
+          <div class="live-view-actions"><button class="secondary-button" id="liveViewReconnect" type="button">영상 재연결</button><button class="secondary-button" id="liveViewFullscreen" type="button">전체화면</button><button class="secondary-button" id="liveViewAnalyze" type="button">사진 AI 분석</button><button class="primary-button" id="liveViewCall" type="button">무전 호출</button><button class="icon-button live-view-close" id="liveViewClose" type="button" aria-label="큰 화면 닫기">×</button></div>
+        </header>
+        <div class="live-view-stage" id="liveViewStage">
+          <img id="liveViewPreview" alt="최근 카메라 프리뷰" />
+          <video id="liveViewVideo" autoplay muted playsinline></video>
+          <div class="live-view-placeholder" id="liveViewPlaceholder"><div><b>실시간 영상 연결 대기</b><span>현장 지킴이가 켜져 있는지 확인해주세요.</span></div></div>
+          <span class="live-view-badge" id="liveViewBadge">WebRTC 연결 중</span>
+        </div>
+        <div class="live-view-metrics" id="liveViewMetrics"></div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="qrModal" hidden>
+      <section class="modal-card qr-modal-card" role="dialog" aria-modal="true" aria-labelledby="qrTitle"><button class="modal-close" data-close-modal="qrModal" type="button">×</button><p class="eyebrow">MOBILE FIELD ACCESS</p><h2 id="qrTitle">현장 지킴이 QR 코드</h2><div id="qrCode" class="qr-code"></div><p>휴대폰 카메라로 QR을 스캔하면 사용자 모드로 바로 이동합니다.</p><input id="guardLinkInput" readonly /><button class="primary-button full-button" id="copyGuardLink" type="button">현장 링크 복사</button></section>
+    </div>
+
+    <div class="modal-backdrop" id="workStopModal" hidden>
+      <section class="modal-card stop-work-modal-card" role="dialog" aria-modal="true" aria-labelledby="workStopTitle"><button class="modal-close" data-close-modal="workStopModal" type="button">×</button><div class="stop-work-icon">■</div><p class="eyebrow danger-text">STOP WORK AUTHORITY</p><h2 id="workStopTitle">작업중지권 행사</h2><p>위험하다고 판단한 사유를 구체적으로 입력하세요. 전송 즉시 관리자 화면에 긴급 알람이 표시되고, 설정된 메일·메시지 채널로 전달됩니다.</p><label>요청자 이름<input id="workStopRequester" placeholder="예: 홍길동" /></label><label>연락처(선택)<input id="workStopContact" placeholder="예: 010-0000-0000" /></label><label>작업중지 사유<textarea id="workStopReason" rows="6" placeholder="예: 인양물 아래 작업자가 진입하여 낙하물 위험이 있어 작업중지를 요청합니다."></textarea></label><label class="switch-row compact"><span><b>전송 후 관제센터 무전 자동 연결</b><small>현장 확인을 위해 관리자에게 즉시 호출합니다.</small></span><input id="workStopAutoCall" type="checkbox" checked /></label><div class="modal-action-row"><button class="secondary-button" data-close-modal="workStopModal" type="button">취소</button><button class="stop-work-submit" id="workStopSubmit" type="button">작업중지 요청 전송</button></div></section>
+    </div>
+
+    <div class="modal-backdrop critical-modal-backdrop" id="adminWorkStopModal" hidden>
+      <section class="modal-card admin-stop-alert-card" role="alertdialog" aria-modal="true" aria-labelledby="adminWorkStopTitle"><div class="critical-siren"><span></span></div><p class="eyebrow danger-text">CRITICAL STOP WORK REQUEST</p><h2 id="adminWorkStopTitle">작업중지권 긴급 요청</h2><div class="admin-stop-details" id="adminWorkStopDetails"></div><div class="modal-action-row wrap"><button class="primary-button" id="adminStopCall" type="button">현장 무전 연결</button><button class="secondary-button" id="adminStopAcknowledge" type="button">요청 접수</button><button class="danger-button" id="adminStopConfirm" type="button">작업중지 확인</button><button class="secondary-button" id="adminStopClose" type="button">창 닫기</button></div></section>
+    </div>
+
+    <div class="modal-backdrop" id="photoAnalysisModal" hidden>
+      <section class="modal-card analysis-modal-card" role="dialog" aria-modal="true" aria-labelledby="photoAnalysisTitle"><button class="modal-close" data-close-modal="photoAnalysisModal" type="button">×</button><p class="eyebrow">AI FIELD PHOTO ANALYSIS</p><h2 id="photoAnalysisTitle">현장 사진 위험요인 분석</h2><div class="analysis-modal-grid"><img id="photoAnalysisImage" alt="분석한 현장 사진" /><div><div class="analysis-status" id="photoAnalysisStatus">AI 분석 준비</div><pre class="analysis-output" id="photoAnalysisText">사진을 분석하고 있습니다.</pre></div></div><div class="modal-action-row"><button class="secondary-button" id="photoAnalysisSpeak" type="button">분석결과 음성 듣기</button><button class="primary-button" data-close-modal="photoAnalysisModal" type="button">확인</button></div></section>
+    </div>
+
+    <div class="modal-backdrop" id="callModal" hidden>
+      <section class="modal-card call-modal-card" role="dialog" aria-modal="true" aria-labelledby="callTitle"><button class="modal-close" id="callCloseButton" type="button">×</button><div class="call-orb" id="callOrb"><span>◖</span></div><p class="eyebrow" id="callEyebrow">TWO-WAY RADIO</p><h2 id="callTitle">관제센터 호출</h2><p id="callDescription">연결을 준비하고 있습니다.</p><p class="call-connection-status" id="callConnectionStatus">대기</p><div class="incoming-actions" id="incomingCallActions" hidden><button class="danger-button" id="rejectCallButton" type="button">거절</button><button class="primary-button" id="acceptCallButton" type="button">응답</button></div><div class="active-call-actions" id="activeCallActions" hidden><button class="ptt-button transmitting" id="pttButton" type="button"><span>●</span><b>마이크 켜짐</b><small>클릭하면 내 마이크를 끕니다.</small></button><button class="secondary-button full-button" id="remoteAudioPlayButton" type="button" hidden>상대방 음성 재생</button><button class="danger-button full-button" id="endCallButton" type="button">통화 종료</button></div><audio id="remoteCallAudio" autoplay playsinline></audio></section>
+    </div>
+
+    <div class="floating-call-alert" id="floatingCallAlert" hidden><span class="ring-dot"></span><div><b id="floatingCallTitle">현장 호출 수신</b><small id="floatingCallText">응답이 필요합니다.</small></div><button id="floatingCallOpen" type="button">확인</button></div>
+    <div class="toast-container" id="toastContainer"></div>
+    <div class="sidebar-scrim" id="sidebarScrim"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

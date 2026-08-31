@@ -29,7 +29,9 @@
   "migrations": [
     {
       "tag": "v1-realtime-signaling",
-      "new_sqlite_classes": ["SignalingRoom"]
+      "new_sqlite_classes": [
+        "SignalingRoom"
+      ]
     }
   ],
   "vars": {
@@ -39,9 +41,19 @@
     "USER_PIN": "1357",
     "SESSION_SECRET": "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET_BEFORE_PRODUCTION",
     "PPE_MODEL_URL": "https://huggingface.co/ayushgupta7777/safetyvision-yolov8/resolve/main/v2/best_640.onnx",
-    "TURN_ICE_SERVERS": "[]"
+    "TURN_ICE_SERVERS": "[]",
+    "AI_PROVIDER": "workers-ai,openai",
+    "WORKERS_AI_MODEL": "@cf/qwen/qwen3.8-27b",
+    "OPENAI_MODEL": "gpt-5-mini",
+    "ADMIN_EMAIL": "",
+    "EMAIL_FROM": "",
+    "NOTIFY_WEBHOOK_URL": "",
+    "TBM_INBOUND_TOKEN": ""
   },
   "observability": {
     "enabled": true
+  },
+  "ai": {
+    "binding": "AI"
   }
 }

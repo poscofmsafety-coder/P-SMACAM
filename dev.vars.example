@@ -1,0 +1,27 @@
+# 로그인 및 세션
+ADMIN_PIN=2468
+USER_PIN=1357
+SESSION_SECRET=CHANGE_TO_A_LONG_RANDOM_SECRET
+
+# AI 분석: 기본은 Workers AI. OpenAI를 우선하려면 AI_PROVIDER=openai,workers-ai
+AI_PROVIDER=workers-ai,openai
+WORKERS_AI_MODEL=@cf/qwen/qwen3.8-27b
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5-mini
+
+# Cloudflare Email Service (선택)
+CLOUDFLARE_ACCOUNT_ID=
+CF_EMAIL_API_TOKEN=
+# Cloudflare Email Sending을 사용하지 않을 때 무료 시연용 Resend API 대체 가능
+RESEND_API_KEY=
+EMAIL_FROM=safety@your-domain.com
+ADMIN_EMAIL=manager@example.com
+
+# 사내 메신저/자동화 Webhook (선택)
+NOTIFY_WEBHOOK_URL=
+
+# 외부 메일 자동수신 Webhook 보호 토큰
+TBM_INBOUND_TOKEN=CHANGE_THIS_TBM_INBOUND_TOKEN
+
+# WebRTC TURN 서버 (선택, JSON 배열)
+TURN_ICE_SERVERS=[]

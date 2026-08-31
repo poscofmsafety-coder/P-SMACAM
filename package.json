@@ -1,14 +1,14 @@
 {
   "name": "posco-futurem-smart-safety-guardian",
-  "version": "2.0.0",
+  "version": "4.0.0",
   "private": true,
   "type": "module",
-  "description": "POSCO Future M 스마트 안전지킴이 - WebRTC 실시간 관제, 브라우저 PPE AI, 양방향 무전, 모바일 QR",
+  "description": "POSCO Future M 스마트 안전지킴이 V4 - 작업중지권, AI 사진분석, TBM 안전소통, 실시간 WebRTC 관제 및 양방향 무전",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
-    "check": "node --check src/worker.js && node --check public/app.js && node --check public/ppe-worker.js",
+    "check": "node --check src/worker.js && node --check src/safety-photo-prompt.js && node --check public/app.js && node --check public/ppe-worker.js",
     "dry-run": "wrangler deploy --dry-run --outdir .wrangler-dry-run"
   },
   "devDependencies": {
