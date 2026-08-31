@@ -50,7 +50,7 @@ const ruleGroups = {
 };
 
 const defaultConfig = () => ({
-  version: 5,
+  version: 6,
   zones: [],
   rules: {
     dangerZone: false,
@@ -72,8 +72,37 @@ const defaultConfig = () => ({
     fire: false,
   },
   voice: { enabled: true, cooldownSeconds: 12, volume: 0.95 },
-  detection: { confidence: 0.28, consecutiveFrames: 3, intervalMs: 1000, inferMissingPpeFromPerson: true, fallbackPpeFromAnyAnchor: true, minPersonHeightRatio: 0.16, fallbackNegativeScore: 0.54 },
+  detection: { confidence: 0.28, consecutiveFrames: 3, intervalMs: 1000, inferMissingPpeFromPerson: true, fallbackPpeFromAnyAnchor: true, forceFacePpeFallback: true, minPersonHeightRatio: 0.16, fallbackNegativeScore: 0.62, gogglesPositiveMinScore: 0.44, maskPositiveMinScore: 0.46, helmetPositiveMinScore: 0.36 },
 });
+
+function normalizeGuardConfig(value) {
+  const defaults = defaultConfig();
+  const source = value && typeof value === "object" ? value : {};
+  const incomingVersion = Number(source.version || 0);
+  const normalized = {
+    ...defaults,
+    ...source,
+    version: Math.max(incomingVersion, defaults.version),
+    zones: Array.isArray(source.zones) ? source.zones : defaults.zones,
+    rules: { ...defaults.rules, ...(source.rules || {}) },
+    voice: { ...defaults.voice, ...(source.voice || {}) },
+    detection: { ...defaults.detection, ...(source.detection || {}) },
+  };
+
+  // V4.2 migration: older device records could explicitly keep the experimental
+  // face-PPE fallback disabled. Re-enable it once so goggles and mask checks do
+  // not disappear when the model only returns a NO-Hardhat anchor.
+  if (incomingVersion < 6) {
+    normalized.rules.safetyGlasses = true;
+    normalized.rules.mask = true;
+    normalized.detection.inferMissingPpeFromPerson = true;
+    normalized.detection.fallbackPpeFromAnyAnchor = true;
+    normalized.detection.forceFacePpeFallback = true;
+    normalized.detection.fallbackNegativeScore = defaults.detection.fallbackNegativeScore;
+  }
+
+  return normalized;
+}
 
 const state = {
   session: null,
@@ -123,6 +152,8 @@ const guard = {
   streaks: new Map(),
   lastEvents: new Map(),
   warningTimer: null,
+  warningQueue: [],
+  warningShowing: false,
   modelError: null,
   voiceQueue: [],
   voiceSpeaking: false,
@@ -1449,13 +1480,13 @@ async function registerGuard() {
     area: $("#guardArea").value.trim() || "미지정 구역",
   };
   localStorage.setItem("ssg-guard-profile", JSON.stringify({ ...profile, cameraId: $("#guardCameraSelect").value, voiceEnabled: $("#guardVoiceEnabled").checked, zoneEnabled: $("#guardZoneEnabled").checked }));
-  await api("/api/agents/register", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), ...profile, cameraLabel: $("#guardCameraSelect").selectedOptions[0]?.textContent || "브라우저 카메라", agentVersion: "browser-webrtc-4.1-ppe-fix", config: guard.config }) });
+  await api("/api/agents/register", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), ...profile, cameraLabel: $("#guardCameraSelect").selectedOptions[0]?.textContent || "브라우저 카메라", agentVersion: "browser-webrtc-4.2-ppe-fix", config: guard.config }) });
 }
 
 async function fetchGuardConfig() {
   if (!guard.active) return;
   try {
-    guard.config = await api(`/api/devices/${encodeURIComponent(getGuardDeviceId())}/config`);
+    guard.config = normalizeGuardConfig(await api(`/api/devices/${encodeURIComponent(getGuardDeviceId())}/config`));
     drawGuardOverlay(guard.detections, 0, 0);
     updateGuardAlarmUi();
   } catch { /* first registration race */ }
@@ -1476,13 +1507,13 @@ function stopGuardTimers() {
 async function sendGuardHeartbeat() {
   if (!guard.active) return;
   try {
-    await api("/api/agents/heartbeat", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), fps: guard.inferenceFps, cpu: 0, memory: 0, peopleCount: guard.peopleCount, currentRisk: guard.currentRisk, agentVersion: "browser-webrtc-4.1-ppe-fix" }) });
+    await api("/api/agents/heartbeat", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), fps: guard.inferenceFps, cpu: 0, memory: 0, peopleCount: guard.peopleCount, currentRisk: guard.currentRisk, agentVersion: "browser-webrtc-4.2-ppe-fix" }) });
   } catch { /* reconnect will retry */ }
 }
 
 function startGuardWorker() {
   guard.worker?.terminate();
-  guard.worker = new Worker("/ppe-worker.js");
+  guard.worker = new Worker("/ppe-worker.js?v=4.2.0");
   guard.modelReady = false;
   guard.modelError = null;
   $("#ppeLoading").hidden = false;
@@ -1675,16 +1706,24 @@ function proxyDetectionToSubject(item, sourceWidth, sourceHeight) {
 function collectPpeSubjects(detections, sourceWidth, sourceHeight) {
   const minRatio = guard.config.detection?.minPersonHeightRatio ?? 0.16;
   const fallbackEnabled = guard.config.detection?.fallbackPpeFromAnyAnchor !== false;
-  const anchorLabels = fallbackEnabled
-    ? new Set(["Person", "Hardhat", "NO-Hardhat", "Goggles", "NO-Goggles", "Mask", "NO-Mask"])
-    : new Set(["Person"]);
 
-  const candidates = detections
-    .filter((item) => anchorLabels.has(item.label))
+  // Person and helmet/no-helmet boxes are substantially more stable anchors for
+  // a worker than tiny eye or mouth PPE boxes. Only use goggles/mask anchors if
+  // no primary subject can be formed.
+  const primaryLabels = fallbackEnabled
+    ? new Set(["Person", "Hardhat", "NO-Hardhat"])
+    : new Set(["Person"]);
+  const secondaryLabels = new Set(["Goggles", "NO-Goggles", "Mask", "NO-Mask"]);
+
+  const buildCandidates = (labels) => detections
+    .filter((item) => labels.has(item.label))
     .map((item) => proxyDetectionToSubject(item, sourceWidth, sourceHeight))
     .filter(Boolean)
     .filter((item) => item.height / Math.max(1, sourceHeight) >= minRatio || item.anchorLabel !== "Person")
     .sort((a, b) => (b.anchorPriority - a.anchorPriority) || (b.width * b.height - a.width * a.height));
+
+  let candidates = buildCandidates(primaryLabels);
+  if (!candidates.length && fallbackEnabled) candidates = buildCandidates(secondaryLabels);
 
   const subjects = [];
   for (const candidate of candidates) {
@@ -1703,30 +1742,87 @@ function collectPpeSubjects(detections, sourceWidth, sourceHeight) {
   return subjects;
 }
 
-function deriveMissingPpeDetections(detections, sourceWidth, sourceHeight) {
-  const result = [...detections];
-  if (guard.config.detection?.inferMissingPpeFromPerson === false) {
-    return { detections: result, subjects: detections.filter((item) => item.label === "Person") };
-  }
+function intersectionArea(a, b) {
+  const x1 = Math.max(a.x, b.x);
+  const y1 = Math.max(a.y, b.y);
+  const x2 = Math.min(a.x + a.width, b.x + b.width);
+  const y2 = Math.min(a.y + a.height, b.y + b.height);
+  return Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+}
 
+function positivePpeMinScore(type) {
+  const detection = guard.config.detection || {};
+  if (type === "goggles") return Number(detection.gogglesPositiveMinScore ?? 0.44);
+  if (type === "mask") return Number(detection.maskPositiveMinScore ?? 0.46);
+  return Number(detection.helmetPositiveMinScore ?? 0.36);
+}
+
+function isReliablePositivePpe(item, region, type) {
+  if (!item || item.synthetic || item.score < positivePpeMinScore(type)) return false;
+  if (!centerInRect(item, region)) return false;
+
+  const itemArea = Math.max(1, item.width * item.height);
+  const overlapOnItem = intersectionArea(item, region) / itemArea;
+  if (overlapOnItem < 0.58) return false;
+
+  const widthRatio = item.width / Math.max(1, region.width);
+  const heightRatio = item.height / Math.max(1, region.height);
+  if (type === "goggles") return widthRatio >= 0.08 && widthRatio <= 1.10 && heightRatio >= 0.06 && heightRatio <= 0.90;
+  if (type === "mask") return widthRatio >= 0.10 && widthRatio <= 1.12 && heightRatio >= 0.08 && heightRatio <= 1.05;
+  return widthRatio >= 0.12 && widthRatio <= 1.25 && heightRatio >= 0.10 && heightRatio <= 1.15;
+}
+
+function negativePpeMatches(item, subject, region) {
+  if (!item) return false;
+  return centerInRect(item, region)
+    || centerInRect(item, subject)
+    || rectIou(item, region) >= 0.03;
+}
+
+function deriveMissingPpeDetections(detections, sourceWidth, sourceHeight) {
   const subjects = collectPpeSubjects(detections, sourceWidth, sourceHeight);
+  if (!subjects.length) return { detections: [...detections], subjects };
+
+  // Keep direct violations and general detections. Goggles/Mask positives are
+  // re-added only after a stricter spatial and confidence check so a weak false
+  // positive cannot suppress the missing-PPE warning.
+  const filteredPositiveLabels = new Set(["Goggles", "Mask"]);
+  const result = detections.filter((item) => !filteredPositiveLabels.has(item.label));
+  const acceptedPositives = new Set();
   const definitions = [
-    { type: "helmet", positive: "Hardhat", negative: "NO-Hardhat" },
-    { type: "goggles", positive: "Goggles", negative: "NO-Goggles" },
-    { type: "mask", positive: "Mask", negative: "NO-Mask" },
+    { type: "helmet", rule: "helmet", positive: "Hardhat", negative: "NO-Hardhat" },
+    { type: "goggles", rule: "safetyGlasses", positive: "Goggles", negative: "NO-Goggles" },
+    { type: "mask", rule: "mask", positive: "Mask", negative: "NO-Mask" },
   ];
-  const syntheticScore = guard.config.detection?.fallbackNegativeScore ?? 0.54;
+  const syntheticScore = Number(guard.config.detection?.fallbackNegativeScore ?? 0.62);
+  const fallbackEnabled = guard.config.detection?.forceFacePpeFallback !== false
+    || guard.config.detection?.inferMissingPpeFromPerson !== false;
 
   for (const subject of subjects) {
     for (const definition of definitions) {
+      if (guard.config.rules?.[definition.rule] === false) continue;
       const region = ppeRegionForPerson(subject, definition.type);
-      const directNegative = detections.some((item) => item.label === definition.negative && centerInRect(item, subject));
-      const positive = detections.some((item) => item.label === definition.positive && centerInRect(item, region));
-      if (!directNegative && !positive) {
+      const negatives = detections
+        .filter((item) => item.label === definition.negative && negativePpeMatches(item, subject, region))
+        .sort((a, b) => b.score - a.score);
+      const positives = detections
+        .filter((item) => item.label === definition.positive && isReliablePositivePpe(item, region, definition.type))
+        .sort((a, b) => b.score - a.score);
+
+      const bestNegative = negatives[0] || null;
+      const bestPositive = positives[0] || null;
+      const positiveWins = bestPositive && (!bestNegative || bestPositive.score >= bestNegative.score + 0.12);
+
+      if (positiveWins) {
+        acceptedPositives.add(bestPositive);
+        continue;
+      }
+
+      if (!bestNegative && fallbackEnabled) {
         result.push({
           classId: -1,
           label: definition.negative,
-          score: Math.max(syntheticScore, Math.min(0.78, (subject.score || 0.55) * 0.82)),
+          score: Math.max(syntheticScore, Math.min(0.82, (subject.score || 0.60) * 0.92)),
           x: region.x,
           y: region.y,
           width: region.width,
@@ -1736,11 +1832,14 @@ function deriveMissingPpeDetections(detections, sourceWidth, sourceHeight) {
           x2: region.x + region.width,
           y2: region.y + region.height,
           synthetic: true,
+          syntheticReason: "PPE_NOT_CONFIRMED",
           anchorLabel: subject.anchorLabel,
         });
       }
     }
   }
+
+  for (const item of acceptedPositives) result.push(item);
   return { detections: result, subjects };
 }
 
@@ -1897,11 +1996,25 @@ async function triggerGuardEvent(event) {
 }
 
 function showGuardWarning(text) {
+  const normalized = String(text || "").trim();
+  if (!normalized) return;
+  if (!guard.warningQueue.includes(normalized)) guard.warningQueue.push(normalized);
+  pumpGuardWarningQueue();
+}
+
+function pumpGuardWarningQueue() {
+  if (guard.warningShowing || !guard.warningQueue.length) return;
   const banner = $("#guardWarningBanner");
+  const text = guard.warningQueue.shift();
+  guard.warningShowing = true;
   banner.textContent = text;
   banner.classList.add("show");
   clearTimeout(guard.warningTimer);
-  guard.warningTimer = setTimeout(() => banner.classList.remove("show"), 6000);
+  guard.warningTimer = setTimeout(() => {
+    banner.classList.remove("show");
+    guard.warningShowing = false;
+    setTimeout(pumpGuardWarningQueue, 220);
+  }, 3600);
 }
 
 function captureGuardSnapshot(quality = 0.68, maxWidth = 960) {

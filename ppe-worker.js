@@ -1,5 +1,6 @@
 /* global ort */
 
+const WORKER_VERSION = "4.2.0";
 const ORT_BASE = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/";
 const MODEL_URL = "/models/ppe.onnx";
 const INPUT_SIZE = 640;
@@ -85,6 +86,7 @@ async function ensureSession() {
       inputName: session.inputNames[0],
       outputName: session.outputNames[0],
       classes: CLASS_NAMES,
+      workerVersion: WORKER_VERSION,
     });
     return session;
   })().catch((error) => {
@@ -256,6 +258,7 @@ async function infer(bitmap, threshold = 0.31) {
     sourceWidth: meta.sourceWidth,
     sourceHeight: meta.sourceHeight,
     inferenceMs: performance.now() - started,
+    workerVersion: WORKER_VERSION,
   };
 }
 

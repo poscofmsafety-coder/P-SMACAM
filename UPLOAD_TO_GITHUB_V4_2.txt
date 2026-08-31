@@ -1,0 +1,22 @@
+V4.2 적용 방법
+
+1. 압축을 풉니다.
+2. 폴더 안의 파일 전체를 기존 GitHub 저장소 루트에 덮어씁니다.
+3. Commit/Push 합니다.
+4. Cloudflare Workers 자동 배포 완료를 확인합니다.
+5. 현장 사용자 브라우저 탭을 완전히 닫고 다시 접속합니다.
+6. 지킴이 시작 후 3회 분석(약 3~5초)을 기다립니다.
+
+빠른 패치만 적용하는 경우 교체 파일:
+- public/app.js
+- public/ppe-worker.js
+- public/index.html
+- public/_headers
+- src/worker.js
+
+정상 예상 표시:
+- HAT: NF
+- GOG: NF ... CHECK
+- MASK: NF ... CHECK
+
+CHECK는 전용 미착용 클래스의 직접 검출이 아니라 얼굴 영역에서 착용 보호구가 충분한 신뢰도로 확인되지 않아 현장 확인이 필요하다는 뜻입니다.

@@ -135,7 +135,7 @@ async function readJson(request) {
 
 function defaultConfig() {
   return {
-    version: 5,
+    version: 6,
     zones: [],
     rules: {
       dangerZone: false,
@@ -157,22 +157,34 @@ function defaultConfig() {
       fire: false,
     },
     voice: { enabled: true, cooldownSeconds: 12, volume: 0.95 },
-    detection: { confidence: 0.28, consecutiveFrames: 3, intervalMs: 1000, inferMissingPpeFromPerson: true, fallbackPpeFromAnyAnchor: true, minPersonHeightRatio: 0.16, fallbackNegativeScore: 0.54 },
+    detection: { confidence: 0.28, consecutiveFrames: 3, intervalMs: 1000, inferMissingPpeFromPerson: true, fallbackPpeFromAnyAnchor: true, forceFacePpeFallback: true, minPersonHeightRatio: 0.16, fallbackNegativeScore: 0.62, gogglesPositiveMinScore: 0.44, maskPositiveMinScore: 0.46, helmetPositiveMinScore: 0.36 },
   };
 }
 
 function normalizeConfig(value) {
   const defaults = defaultConfig();
   const config = value && typeof value === "object" ? value : {};
-  return {
+  const incomingVersion = Number(config.version || 0);
+  const normalized = {
     ...defaults,
     ...config,
-    version: Math.max(Number(config.version || 0), defaults.version),
+    version: Math.max(incomingVersion, defaults.version),
     zones: Array.isArray(config.zones) ? config.zones : defaults.zones,
     rules: { ...defaults.rules, ...(config.rules || {}) },
     voice: { ...defaults.voice, ...(config.voice || {}) },
     detection: { ...defaults.detection, ...(config.detection || {}) },
   };
+
+  if (incomingVersion < 6) {
+    normalized.rules.safetyGlasses = true;
+    normalized.rules.mask = true;
+    normalized.detection.inferMissingPpeFromPerson = true;
+    normalized.detection.fallbackPpeFromAnyAnchor = true;
+    normalized.detection.forceFacePpeFallback = true;
+    normalized.detection.fallbackNegativeScore = defaults.detection.fallbackNegativeScore;
+  }
+
+  return normalized;
 }
 
 async function ensureSchema(env) {
@@ -942,7 +954,7 @@ async function handleApi(request, env) {
     const requestedConfig = normalizeConfig(body.config && typeof body.config === "object" ? body.config : defaultConfig());
     const current = await env.DB.prepare("SELECT config_json FROM devices WHERE id=?").bind(id).first();
     const config = current?.config_json ? normalizeConfig(safeJsonParse(current.config_json, requestedConfig)) : requestedConfig;
-    await env.DB.prepare(`INSERT INTO devices (id,name,site,area,camera_label,status,agent_version,last_seen,fps,cpu,memory,people_count,current_risk,preview_key,config_json,created_at,updated_at) VALUES (?,?,?,?,?,'online',?,?,0,0,0,0,'정상',NULL,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,site=excluded.site,area=excluded.area,camera_label=excluded.camera_label,status='online',agent_version=excluded.agent_version,last_seen=excluded.last_seen,updated_at=excluded.updated_at`).bind(id, String(body.name || id), String(body.site || "미지정 사업장"), String(body.area || "미지정 구역"), String(body.cameraLabel || "브라우저 카메라"), String(body.agentVersion || "browser-webrtc-4.1-ppe-fix"), now, JSON.stringify(config), now, now).run();
+    await env.DB.prepare(`INSERT INTO devices (id,name,site,area,camera_label,status,agent_version,last_seen,fps,cpu,memory,people_count,current_risk,preview_key,config_json,created_at,updated_at) VALUES (?,?,?,?,?,'online',?,?,0,0,0,0,'정상',NULL,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,site=excluded.site,area=excluded.area,camera_label=excluded.camera_label,status='online',agent_version=excluded.agent_version,last_seen=excluded.last_seen,config_json=excluded.config_json,updated_at=excluded.updated_at`).bind(id, String(body.name || id), String(body.site || "미지정 사업장"), String(body.area || "미지정 구역"), String(body.cameraLabel || "브라우저 카메라"), String(body.agentVersion || "browser-webrtc-4.2-ppe-fix"), now, JSON.stringify(config), now, now).run();
     const device = await env.DB.prepare("SELECT * FROM devices WHERE id=?").bind(id).first();
     return json({ ok: true, data: mapDevice(device) }, 201);
   }
@@ -1096,7 +1108,7 @@ export default {
       headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
       headers.set("X-Content-Type-Options", "nosniff");
       headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-      if (["/", "/index.html", "/app.js", "/styles.css"].includes(url.pathname) || !url.pathname.includes(".")) headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      if (["/", "/index.html", "/app.js", "/styles.css", "/ppe-worker.js"].includes(url.pathname) || !url.pathname.includes(".")) headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
       return new Response(assetResponse.body, { status: assetResponse.status, statusText: assetResponse.statusText, headers });
     } catch (err) {
       console.error(err);
