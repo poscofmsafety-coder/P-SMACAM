@@ -1480,7 +1480,7 @@ async function registerGuard() {
     area: $("#guardArea").value.trim() || "미지정 구역",
   };
   localStorage.setItem("ssg-guard-profile", JSON.stringify({ ...profile, cameraId: $("#guardCameraSelect").value, voiceEnabled: $("#guardVoiceEnabled").checked, zoneEnabled: $("#guardZoneEnabled").checked }));
-  await api("/api/agents/register", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), ...profile, cameraLabel: $("#guardCameraSelect").selectedOptions[0]?.textContent || "브라우저 카메라", agentVersion: "browser-webrtc-4.2-ppe-fix", config: guard.config }) });
+  await api("/api/agents/register", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), ...profile, cameraLabel: $("#guardCameraSelect").selectedOptions[0]?.textContent || "브라우저 카메라", agentVersion: "browser-webrtc-4.3-ppe-tristate", config: guard.config }) });
 }
 
 async function fetchGuardConfig() {
@@ -1507,13 +1507,13 @@ function stopGuardTimers() {
 async function sendGuardHeartbeat() {
   if (!guard.active) return;
   try {
-    await api("/api/agents/heartbeat", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), fps: guard.inferenceFps, cpu: 0, memory: 0, peopleCount: guard.peopleCount, currentRisk: guard.currentRisk, agentVersion: "browser-webrtc-4.2-ppe-fix" }) });
+    await api("/api/agents/heartbeat", { method: "POST", body: JSON.stringify({ deviceId: getGuardDeviceId(), fps: guard.inferenceFps, cpu: 0, memory: 0, peopleCount: guard.peopleCount, currentRisk: guard.currentRisk, agentVersion: "browser-webrtc-4.3-ppe-tristate" }) });
   } catch { /* reconnect will retry */ }
 }
 
 function startGuardWorker() {
   guard.worker?.terminate();
-  guard.worker = new Worker("/ppe-worker.js?v=4.2.0");
+  guard.worker = new Worker("/ppe-worker.js?v=4.3.0");
   guard.modelReady = false;
   guard.modelError = null;
   $("#ppeLoading").hidden = false;
@@ -1779,26 +1779,25 @@ function negativePpeMatches(item, subject, region) {
     || rectIou(item, region) >= 0.03;
 }
 
-function deriveMissingPpeDetections(detections, sourceWidth, sourceHeight) {
+function derivePpeTriState(detections, sourceWidth, sourceHeight) {
   const subjects = collectPpeSubjects(detections, sourceWidth, sourceHeight);
-  if (!subjects.length) return { detections: [...detections], subjects };
+  if (!subjects.length) return { detections: [...detections], subjects, assessments: [] };
 
-  // Keep direct violations and general detections. Goggles/Mask positives are
-  // re-added only after a stricter spatial and confidence check so a weak false
-  // positive cannot suppress the missing-PPE warning.
-  const filteredPositiveLabels = new Set(["Goggles", "Mask"]);
-  const result = detections.filter((item) => !filteredPositiveLabels.has(item.label));
-  const acceptedPositives = new Set();
+  // PPE is always shown as one of three states per worker:
+  //   OK      = reliable positive detection (fluorescent green)
+  //   NF      = direct negative detection (red)
+  //   CHECK   = camera/model cannot confirm either state (orange)
+  // Unknown is deliberately NOT converted into a violation.
+  const result = detections.filter((item) => !["Hardhat", "Goggles", "Mask"].includes(item.label));
+  const assessments = [];
   const definitions = [
-    { type: "helmet", rule: "helmet", positive: "Hardhat", negative: "NO-Hardhat" },
-    { type: "goggles", rule: "safetyGlasses", positive: "Goggles", negative: "NO-Goggles" },
-    { type: "mask", rule: "mask", positive: "Mask", negative: "NO-Mask" },
+    { type: "helmet", rule: "helmet", positive: "Hardhat", negative: "NO-Hardhat", check: "CHECK-Hardhat" },
+    { type: "goggles", rule: "safetyGlasses", positive: "Goggles", negative: "NO-Goggles", check: "CHECK-Goggles" },
+    { type: "mask", rule: "mask", positive: "Mask", negative: "NO-Mask", check: "CHECK-Mask" },
   ];
-  const syntheticScore = Number(guard.config.detection?.fallbackNegativeScore ?? 0.62);
-  const fallbackEnabled = guard.config.detection?.forceFacePpeFallback !== false
-    || guard.config.detection?.inferMissingPpeFromPerson !== false;
 
   for (const subject of subjects) {
+    const workerAssessment = { subject, ppe: {} };
     for (const definition of definitions) {
       if (guard.config.rules?.[definition.rule] === false) continue;
       const region = ppeRegionForPerson(subject, definition.type);
@@ -1811,42 +1810,67 @@ function deriveMissingPpeDetections(detections, sourceWidth, sourceHeight) {
 
       const bestNegative = negatives[0] || null;
       const bestPositive = positives[0] || null;
-      const positiveWins = bestPositive && (!bestNegative || bestPositive.score >= bestNegative.score + 0.12);
+      let state = "unknown";
+      let selected = null;
 
-      if (positiveWins) {
-        acceptedPositives.add(bestPositive);
-        continue;
+      // A direct negative wins unless the positive is meaningfully stronger.
+      if (bestNegative && (!bestPositive || bestNegative.score >= bestPositive.score - 0.04)) {
+        state = "bad";
+        selected = bestNegative;
+      } else if (bestPositive) {
+        state = "ok";
+        selected = bestPositive;
       }
 
-      if (!bestNegative && fallbackEnabled) {
+      if (state === "ok") {
+        // Draw a stable region box instead of tiny detector box so the operator can read it.
+        result.push({
+          ...selected,
+          label: definition.positive,
+          x: region.x, y: region.y, width: region.width, height: region.height,
+          x1: region.x, y1: region.y, x2: region.x + region.width, y2: region.y + region.height,
+          ppeState: "ok",
+        });
+      } else if (state === "bad") {
+        result.push({
+          ...selected,
+          label: definition.negative,
+          x: region.x, y: region.y, width: region.width, height: region.height,
+          x1: region.x, y1: region.y, x2: region.x + region.width, y2: region.y + region.height,
+          ppeState: "bad",
+        });
+      } else {
+        const confidence = Math.max(0.01, Math.min(0.99, (subject.score || 0.50) * 0.65));
         result.push({
           classId: -1,
-          label: definition.negative,
-          score: Math.max(syntheticScore, Math.min(0.82, (subject.score || 0.60) * 0.92)),
-          x: region.x,
-          y: region.y,
-          width: region.width,
-          height: region.height,
-          x1: region.x,
-          y1: region.y,
-          x2: region.x + region.width,
-          y2: region.y + region.height,
+          label: definition.check,
+          score: confidence,
+          x: region.x, y: region.y, width: region.width, height: region.height,
+          x1: region.x, y1: region.y, x2: region.x + region.width, y2: region.y + region.height,
           synthetic: true,
-          syntheticReason: "PPE_NOT_CONFIRMED",
+          syntheticReason: "PPE_VISIBILITY_UNCERTAIN",
           anchorLabel: subject.anchorLabel,
+          ppeState: "unknown",
         });
       }
+
+      workerAssessment.ppe[definition.type] = {
+        state,
+        region,
+        positiveScore: bestPositive?.score || 0,
+        negativeScore: bestNegative?.score || 0,
+      };
     }
+    assessments.push(workerAssessment);
   }
 
-  for (const item of acceptedPositives) result.push(item);
-  return { detections: result, subjects };
+  return { detections: result, subjects, assessments };
 }
 
 function processGuardDetections(message) {
   resizeGuardOverlay();
   const rawDetections = message.detections || [];
-  const derived = deriveMissingPpeDetections(rawDetections, message.sourceWidth, message.sourceHeight);
+  const derived = derivePpeTriState(rawDetections, message.sourceWidth, message.sourceHeight);
   const detections = derived.detections;
   guard.peopleCount = Math.max(rawDetections.filter((item) => item.label === "Person").length, derived.subjects.length);
   const violations = [];
@@ -1945,7 +1969,7 @@ function drawGuardOverlay(detections = [], sourceWidth = 0, sourceHeight = 0, zo
     ctx.setLineDash(item.synthetic ? [9, 6] : []);
     ctx.strokeRect(x, y, width, height);
     ctx.setLineDash([]);
-    drawLabel(ctx, `${style.text} ${Math.round(item.score * 100)}%${item.synthetic ? " CHECK" : ""}`, x, Math.max(2, y - 23), style.color, style.background);
+    drawLabel(ctx, `${style.text} ${Math.round(item.score * 100)}%`, x, Math.max(2, y - 23), style.color, style.background);
   }
   for (const entry of zoneEntries) {
     ctx.beginPath();
@@ -1963,6 +1987,9 @@ function detectionStyle(label) {
     "NO-Goggles": ["GOG: NF", "#ff3c58", "#22070c", 4],
     Mask: ["MASK: OK", "#5cff91", "#06180e", 3],
     "NO-Mask": ["MASK: NF", "#ff3c58", "#22070c", 4],
+    "CHECK-Hardhat": ["HAT: CHECK", "#ffad33", "#241607", 3],
+    "CHECK-Goggles": ["GOG: CHECK", "#ffad33", "#241607", 3],
+    "CHECK-Mask": ["MASK: CHECK", "#ffad33", "#241607", 3],
     No_Harness: ["HARNESS: NF", "#ff3c58", "#22070c", 4],
     "Fall-Detected": ["FALL: CHECK", "#ff3c58", "#22070c", 4],
     Person: ["PERSON", "#59e0dc", "#06181c", 2],

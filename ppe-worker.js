@@ -1,6 +1,6 @@
 /* global ort */
 
-const WORKER_VERSION = "4.2.0";
+const WORKER_VERSION = "4.3.0";
 const ORT_BASE = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/";
 const MODEL_URL = "/models/ppe.onnx";
 const INPUT_SIZE = 640;
